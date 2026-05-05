@@ -12,7 +12,7 @@ export default function RootLayout() {
           headerTitleStyle: { fontWeight: '600' },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Today' }} />
+        <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />
         <Stack.Screen name="add" options={{ title: 'Add Content', presentation: 'modal' }} />
         <Stack.Screen name="review" options={{ title: 'Review', headerBackVisible: false }} />
         <Stack.Screen name="progress" options={{ title: 'Progress' }} />
