@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Repository } from '../db/repository';
 import type { Question, Card } from '../types';
+import { useSettingsStore } from '../store/settings';
 
 export function useSchedule(repo: Repository | null) {
   const [dueCount, setDueCount] = useState(0);
@@ -9,6 +10,7 @@ export function useSchedule(repo: Repository | null) {
   const [todayCorrect, setTodayCorrect] = useState(0);
   const [loading, setLoading] = useState(true);
   const isInitialLoad = useRef(true);
+  const questionsPerReview = useSettingsStore((s) => s.questionsPerReview);
 
   const loadStats = useCallback(async () => {
     if (!repo) return;
@@ -20,7 +22,9 @@ export function useSchedule(repo: Repository | null) {
       const total = await repo.getTotalQuestionCount();
       const reviewed = await repo.getTodayReviewedCount();
       const correct = await repo.getTodayCorrectCount();
-      setDueCount(due.length);
+      // Apply questionsPerReview limit if set (> 0)
+      const limit = questionsPerReview > 0 ? questionsPerReview : due.length;
+      setDueCount(Math.min(due.length, limit));
       setTotalQuestions(total);
       setTodayReviewed(reviewed);
       setTodayCorrect(correct);
@@ -30,7 +34,7 @@ export function useSchedule(repo: Repository | null) {
       setLoading(false);
       isInitialLoad.current = false;
     }
-  }, [repo]);
+  }, [repo, questionsPerReview]);
 
   useEffect(() => {
     loadStats();

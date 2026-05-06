@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
 import { useApiClient } from '../src/hooks/useApiClient';
@@ -7,6 +7,7 @@ import { digestContent } from '../src/llm/digest';
 import { generateQuestions } from '../src/llm/questions';
 import { initDatabase } from '../src/hooks/useDatabase';
 import { useSettingsStore } from '../src/store/settings';
+import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
 
 export default function AddContentScreen() {
@@ -15,7 +16,10 @@ export default function AddContentScreen() {
   const apiClient = useApiClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState<{ title: string; count: number } | null>(null);
+  const [lastInput, setLastInput] = useState<string>('');
   const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
+  const multipleChoiceOnly = useSettingsStore((s) => s.multipleChoiceOnly);
+  const c = useColors();
 
   const handleSubmit = async (input: string) => {
     if (!apiClient) {
@@ -23,6 +27,7 @@ export default function AddContentScreen() {
       return;
     }
 
+    setLastInput(input);
     setIsProcessing(true);
 
     try {
@@ -30,7 +35,7 @@ export default function AddContentScreen() {
       const digest = await digestContent(apiClient, input);
 
       // Step 2: Generate questions
-      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title, questionsPerContent);
+      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title, questionsPerContent, multipleChoiceOnly);
 
       // Step 3: Save to database
       const repo = await initDatabase();
@@ -52,7 +57,17 @@ export default function AddContentScreen() {
       setSuccess({ title: digest.title, count: questions.length });
     } catch (e: any) {
       setSuccess(null);
+      setIsProcessing(false);
       console.error('Content processing failed:', e);
+      Alert.alert(
+        'Processing Failed',
+        `The content was too long or the AI returned an invalid response.\n\n${e.message || 'Unknown error'}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleSubmit(lastInput) },
+        ],
+      );
+      return;
     } finally {
       setIsProcessing(false);
     }
@@ -60,19 +75,21 @@ export default function AddContentScreen() {
 
   if (success) {
     return (
-      <View style={styles.successContainer}>
+      <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
         <Text style={styles.successIcon}>✅</Text>
-        <Text style={styles.successTitle}>{t('add.successTitle')}</Text>
-        <Text style={styles.successSubtitle}>"{success.title}"</Text>
-        <View style={styles.successCountBox}>
+        <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
+        <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
+        <View style={[styles.successCountBox, { backgroundColor: c.successBg }]}>
           <Text style={styles.successCountNum}>{success.count}</Text>
           <Text style={styles.successCountLabel}>{t('add.questionsGenerated')}</Text>
         </View>
         <TouchableOpacity
-          style={styles.reviewButton}
+          style={[styles.reviewButton, { backgroundColor: c.blue }]}
           onPress={() => {
             setSuccess(null);
-            router.push('/review');
+            // Dismiss all modals first so review pushes onto clean stack
+            router.dismissAll();
+            setTimeout(() => router.push('/review'), 50);
           }}
         >
           <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
@@ -81,7 +98,7 @@ export default function AddContentScreen() {
           style={styles.homeButton}
           onPress={() => router.replace('/')}
         >
-          <Text style={styles.homeButtonText}>{t('add.backToHome')}</Text>
+          <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -93,14 +110,14 @@ export default function AddContentScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t('add.title')}</Text>
-        <Text style={styles.subtitle}>
+      <ScrollView style={[styles.container, { backgroundColor: c.bg }]} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.title, { color: c.textPrimary }]}>{t('add.title')}</Text>
+        <Text style={[styles.subtitle, { color: c.textSecondary }]}>
           {t('add.subtitle')}
         </Text>
         <AddContentForm onSubmit={handleSubmit} isProcessing={isProcessing} />
         {isProcessing && (
-          <View style={styles.processingBox}>
+          <View style={[styles.processingBox, { backgroundColor: '#E3F2FD' }]}>
             <Text style={styles.processingText}>{t('add.processingTitle')}</Text>
             <Text style={styles.processingDetail}>
               {t('add.processingDetail', { count: questionsPerContent })}
@@ -113,38 +130,38 @@ export default function AddContentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
-  title: { fontSize: 24, fontWeight: '700', color: '#333', padding: 20, paddingBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666', paddingHorizontal: 20, paddingBottom: 8, lineHeight: 20 },
+  container: { flex: 1 },
+  title: { fontSize: 24, fontWeight: '700', padding: 20, paddingBottom: 4 },
+  subtitle: { fontSize: 14, paddingHorizontal: 20, paddingBottom: 8, lineHeight: 20 },
   processingBox: {
-    margin: 20, padding: 16, backgroundColor: '#E3F2FD', borderRadius: 12,
+    margin: 20, padding: 16, borderRadius: 12,
     alignItems: 'center', gap: 8,
   },
   processingText: { fontSize: 16, fontWeight: '600', color: '#1565C0' },
   processingDetail: { fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 18 },
   successContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#F5F5F5', padding: 32,
+    padding: 32,
   },
   successIcon: { fontSize: 64, marginBottom: 16 },
-  successTitle: { fontSize: 24, fontWeight: '700', color: '#333', marginBottom: 8 },
+  successTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
   successSubtitle: {
-    fontSize: 16, color: '#666', textAlign: 'center',
+    fontSize: 16, textAlign: 'center',
     fontStyle: 'italic', marginBottom: 24, lineHeight: 22,
   },
   successCountBox: {
-    backgroundColor: '#E8F5E9', borderRadius: 16, padding: 20,
+    borderRadius: 16, padding: 20,
     alignItems: 'center', marginBottom: 32, width: '100%',
   },
   successCountNum: { fontSize: 48, fontWeight: '800', color: '#2E7D32' },
   successCountLabel: { fontSize: 14, color: '#388E3C', marginTop: 4 },
   reviewButton: {
-    backgroundColor: '#4A90D9', borderRadius: 12, paddingVertical: 16,
+    borderRadius: 12, paddingVertical: 16,
     paddingHorizontal: 48, width: '100%', alignItems: 'center', marginBottom: 12,
   },
   reviewButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   homeButton: {
     paddingVertical: 12, paddingHorizontal: 48, alignItems: 'center',
   },
-  homeButtonText: { color: '#888', fontSize: 15, fontWeight: '500' },
+  homeButtonText: { fontSize: 15, fontWeight: '500' },
 });

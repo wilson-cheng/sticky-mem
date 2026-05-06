@@ -202,7 +202,7 @@ export default function QuestionCard({
 
           {/* Actions */}
           <View style={styles.revealActions}>
-            <TouchableOpacity style={styles.nextButton} onPress={handleNextPress}>
+            <TouchableOpacity style={[styles.nextButton, isCorrect && styles.nextButtonCorrect]} onPress={handleNextPress}>
               <Text style={styles.nextButtonText}>
                 {isCorrect && countdown > 0 ? t('question.next', { countdown }) : t('question.continue')}
               </Text>
@@ -274,6 +274,9 @@ const styles = StyleSheet.create({
   revealActions: { gap: 10, marginTop: 4 },
   nextButton: {
     backgroundColor: '#6C63FF', borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+  },
+  nextButtonCorrect: {
+    backgroundColor: '#4CAF50',
   },
   nextButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   removeButton: {

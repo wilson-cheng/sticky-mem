@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { initDatabase } from '../src/hooks/useDatabase';
 import type { DailyStats } from '../src/types';
+import { useColors } from '../src/theme/useColors';
 import ProgressChart from '../src/components/ProgressChart';
 
 export default function ProgressScreen() {
@@ -9,6 +10,7 @@ export default function ProgressScreen() {
   const [overallAccuracy, setOverallAccuracy] = useState(0);
   const [totalReviewed, setTotalReviewed] = useState(0);
   const [loading, setLoading] = useState(true);
+  const c = useColors();
 
   useEffect(() => {
     loadStats();
@@ -32,38 +34,38 @@ export default function ProgressScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4A90D9" />
+      <View style={[styles.centered, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.blue} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>Overall Performance</Text>
+    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Overall Performance</Text>
 
       <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{Math.round(overallAccuracy * 100)}%</Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
+        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+          <Text style={[styles.statNumber, { color: c.textPrimary }]}>{Math.round(overallAccuracy * 100)}%</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary }]}>Accuracy</Text>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{totalReviewed}</Text>
-          <Text style={styles.statLabel}>Total Reviews</Text>
+        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+          <Text style={[styles.statNumber, { color: c.textPrimary }]}>{totalReviewed}</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary }]}>Total Reviews</Text>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{stats.length}</Text>
-          <Text style={styles.statLabel}>Days Tracked</Text>
+        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+          <Text style={[styles.statNumber, { color: c.textPrimary }]}>{stats.length}</Text>
+          <Text style={[styles.statLabel, { color: c.textSecondary }]}>Days Tracked</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Accuracy Trend</Text>
-      <View style={styles.chartCard}>
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Accuracy Trend</Text>
+      <View style={[styles.chartCard, { backgroundColor: c.cardBg }]}>
         <ProgressChart data={stats} />
       </View>
 
       {stats.length === 0 && (
-        <Text style={styles.emptyText}>
+        <Text style={[styles.emptyText, { color: c.textSecondary }]}>
           Start reviewing content to see your memory retention trend over time.
         </Text>
       )}
@@ -72,20 +74,20 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   content: { padding: 20 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 16, marginTop: 8 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16, marginTop: 8 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   statBox: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center',
+    flex: 1, borderRadius: 14, padding: 16, alignItems: 'center',
   },
-  statNumber: { fontSize: 28, fontWeight: '800', color: '#333' },
-  statLabel: { fontSize: 12, color: '#888', marginTop: 4 },
+  statNumber: { fontSize: 28, fontWeight: '800' },
+  statLabel: { fontSize: 12, marginTop: 4 },
   chartCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16,
+    borderRadius: 14, padding: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 32, lineHeight: 20 },
+  emptyText: { fontSize: 14, textAlign: 'center', marginTop: 32, lineHeight: 20 },
 });

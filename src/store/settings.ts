@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SettingsState {
   apiKey: string;
@@ -19,6 +20,8 @@ interface SettingsState {
   setTheme: (t: 'light' | 'dark') => void;
   language: 'en' | 'zh-Hans' | 'zh-Hant';
   setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => void;
+  multipleChoiceOnly: boolean;
+  setMultipleChoiceOnly: (v: boolean) => void;
 }
 
 // ─── API Key storage (web: localStorage, native: expo-secure-store) ─── //
@@ -63,64 +66,6 @@ async function removeApiKey(): Promise<void> {
   } catch {}
 }
 
-// ─── Other settings storage (web: localStorage, native: expo-file-system) ─── //
-
-const SETTINGS_FILENAME = 'stickymem-settings.json';
-
-async function loadSettingsBlob(): Promise<string | null> {
-  if (Platform.OS === 'web') {
-    try { return localStorage.getItem('stickymem-settings-blob'); }
-    catch { return null; }
-  }
-  try {
-    const FS = await import('expo-file-system');
-    const path = FS.documentDirectory + SETTINGS_FILENAME;
-    return await FS.readAsStringAsync(path);
-  } catch { return null; }
-}
-
-async function saveSettingsBlob(value: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    try { localStorage.setItem('stickymem-settings-blob', value); }
-    catch {}
-    return;
-  }
-  try {
-    const FS = await import('expo-file-system');
-    const path = FS.documentDirectory + SETTINGS_FILENAME;
-    await FS.writeAsStringAsync(path, value);
-  } catch {}
-}
-
-async function removeSettingsBlob(): Promise<void> {
-  if (Platform.OS === 'web') {
-    try { localStorage.removeItem('stickymem-settings-blob'); }
-    catch {}
-    return;
-  }
-  try {
-    const FS = await import('expo-file-system');
-    const path = FS.documentDirectory + SETTINGS_FILENAME;
-    await FS.deleteAsync(path, { idempotent: true });
-  } catch {}
-}
-
-// ─── Hybrid storage for zustand persist ─── //
-
-const storage = {
-  getItem: async (_name: string): Promise<string | null> => {
-    const blob = await loadSettingsBlob();
-    if (!blob) return null;
-    return blob;
-  },
-  setItem: async (_name: string, value: string): Promise<void> => {
-    await saveSettingsBlob(value);
-  },
-  removeItem: async (_name: string): Promise<void> => {
-    await removeSettingsBlob();
-  },
-};
-
 // ─── Store creation ─── //
 
 export const useSettingsStore = create<SettingsState>()(
@@ -145,10 +90,12 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (t: 'light' | 'dark') => set({ theme: t }),
       language: 'en',
       setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => set({ language: l }),
+      multipleChoiceOnly: false,
+      setMultipleChoiceOnly: (v: boolean) => set({ multipleChoiceOnly: v }),
     }),
     {
       name: 'stickymem-settings',
-      storage: createJSONStorage(() => storage),
+      storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         dailyReviewTarget: state.dailyReviewTarget,
         contentCount: state.contentCount,
@@ -156,6 +103,7 @@ export const useSettingsStore = create<SettingsState>()(
         questionsPerReview: state.questionsPerReview,
         theme: state.theme,
         language: state.language,
+        multipleChoiceOnly: state.multipleChoiceOnly,
       }),
       onRehydrateStorage: () => {
         return async (state) => {

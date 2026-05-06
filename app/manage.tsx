@@ -9,11 +9,14 @@ import { digestContent } from '../src/llm/digest';
 import { generateQuestions } from '../src/llm/questions';
 import type { Content } from '../src/types';
 import { useSettingsStore } from '../src/store/settings';
+import { useColors } from '../src/theme/useColors';
 
 export default function ManageContentScreen() {
   const router = useRouter();
   const apiClient = useApiClient();
   const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
+  const multipleChoiceOnly = useSettingsStore((s) => s.multipleChoiceOnly);
+  const c = useColors();
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export default function ManageContentScreen() {
     try {
       const repo = await initDatabase();
       const digest = await digestContent(apiClient, content.rawText);
-      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title, questionsPerContent);
+      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title, questionsPerContent, multipleChoiceOnly);
 
       // Delete old questions & cards for this content
       await repo.deleteQuestionsByContentId(content.id);
@@ -108,49 +111,49 @@ export default function ManageContentScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4A90D9" />
+      <View style={[styles.centered, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.blue} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Your Content</Text>
+    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: c.textPrimary }]}>Your Content</Text>
       {contents.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={styles.emptyText}>No content yet.</Text>
-          <TouchableOpacity style={styles.addButton} onPress={() => router.push('/add')}>
+          <Text style={[styles.emptyText, { color: c.textSecondary }]}>No content yet.</Text>
+          <TouchableOpacity style={[styles.addButton, { backgroundColor: c.blue }]} onPress={() => router.push('/add')}>
             <Text style={styles.addButtonText}>Add Your First Content</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        contents.map((c) => (
-          <View key={c.id} style={styles.contentCard}>
+        contents.map((item) => (
+          <View key={item.id} style={[styles.contentCard, { backgroundColor: c.inputBg, borderColor: c.border }]}>
             <View style={styles.contentHeader}>
-              <Text style={styles.contentTitle} numberOfLines={1}>{c.title}</Text>
-              <Text style={styles.contentDate}>
-                {new Date(c.createdAt).toLocaleDateString()}
+              <Text style={[styles.contentTitle, { color: c.textPrimary }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={[styles.contentDate, { color: c.textSecondary }]}>
+                {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </View>
-            <View style={styles.contentActions}>
+            <View style={[styles.contentActions, { borderTopWidth: 1, borderTopColor: c.border }]}>
               <TouchableOpacity
-                style={styles.regenerateBtn}
-                onPress={() => handleRegenerate(c)}
-                disabled={regeneratingId === c.id}
+                style={[styles.regenerateBtn, { backgroundColor: c.blue }]}
+                onPress={() => handleRegenerate(item)}
+                disabled={regeneratingId === item.id}
               >
-                {regeneratingId === c.id ? (
+                {regeneratingId === item.id ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.regenerateBtnText}>🔄 Regenerate</Text>
+                  <Text style={[styles.regenerateBtnText, { color: '#fff' }]}>🔄 Regenerate</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(c.id, c.title)}
+                style={[styles.deleteBtn, { backgroundColor: c.blue }]}
+                onPress={() => handleDelete(item.id, item.title)}
               >
-                <Text style={styles.deleteBtnText}>🗑️ Delete</Text>
+                <Text style={[styles.deleteBtnText, { color: '#fff' }]}>🗑️ Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -161,36 +164,35 @@ export default function ManageContentScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   content: { padding: 20 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
-  title: { fontSize: 24, fontWeight: '700', color: '#333', marginBottom: 20 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 20 },
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyIcon: { fontSize: 48 },
-  emptyText: { fontSize: 16, color: '#888', textAlign: 'center' },
+  emptyText: { fontSize: 16, textAlign: 'center' },
   addButton: {
-    backgroundColor: '#4A90D9', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 14,
+    borderRadius: 10, paddingHorizontal: 24, paddingVertical: 14,
   },
   addButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   contentCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    borderRadius: 14, padding: 16, marginBottom: 12,
+    borderWidth: 1.5,
   },
   contentHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
   },
-  contentTitle: { fontSize: 16, fontWeight: '600', color: '#333', flex: 1, marginRight: 8 },
-  contentDate: { fontSize: 12, color: '#999' },
-  contentActions: { flexDirection: 'row', gap: 10 },
+  contentTitle: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 8 },
+  contentDate: { fontSize: 12 },
+  contentActions: { flexDirection: 'row', gap: 10, paddingTop: 10 },
   regenerateBtn: {
-    flex: 1, backgroundColor: '#6C63FF', borderRadius: 8,
+    flex: 1, borderRadius: 8,
     paddingVertical: 10, alignItems: 'center',
   },
-  regenerateBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  regenerateBtnText: { fontSize: 14, fontWeight: '600' },
   deleteBtn: {
-    backgroundColor: '#FFEBEE', borderRadius: 8,
+    borderRadius: 8,
     paddingVertical: 10, paddingHorizontal: 16,
   },
-  deleteBtnText: { color: '#C62828', fontSize: 14, fontWeight: '600' },
+  deleteBtnText: { fontSize: 14, fontWeight: '600' },
 });

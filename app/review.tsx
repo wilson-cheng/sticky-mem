@@ -7,6 +7,7 @@ import { initDatabase } from '../src/hooks/useDatabase';
 import type { Question, Card, ReviewRecord } from '../src/types';
 import { sm2, calculateNextReview } from '../src/engine/sm2';
 import { useSettingsStore } from '../src/store/settings';
+import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
 
 function shuffle<T>(arr: T[]): T[] {
@@ -24,6 +25,7 @@ export default function ReviewScreen() {
   const { t } = useTranslation();
   const questionsPerReview = useSettingsStore((s) => s.questionsPerReview);
   const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
+  const c = useColors();
 
   const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -38,7 +40,7 @@ export default function ReviewScreen() {
       t('review.leaveMessage'),
       [
         { text: t('settings.cancel'), style: 'cancel' },
-        { text: t('review.leave'), style: 'destructive', onPress: () => router.replace('/') },
+        { text: t('review.leave'), style: 'destructive', onPress: () => router.back() },
       ]
     );
   };
@@ -209,6 +211,18 @@ export default function ReviewScreen() {
     const currentCard = reviewQueue[currentIndex];
     if (!currentCard) return;
 
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        t('question.remove'),
+        t('review.removeConfirm'),
+        [
+          { text: t('settings.cancel'), style: 'cancel', onPress: () => resolve(false) },
+          { text: t('question.remove'), style: 'destructive', onPress: () => resolve(true) },
+        ]
+      );
+    });
+    if (!confirmed) return;
+
     try {
       const repo = repoRef.current;
       await repo.run('DELETE FROM cards WHERE question_id = ?', [currentCard.id]);
@@ -217,7 +231,7 @@ export default function ReviewScreen() {
     } catch (e) {
       console.error('Failed to remove question:', e);
     }
-  }, [reviewQueue, currentIndex, advance]);
+  }, [reviewQueue, currentIndex, advance, t]);
 
   // ─── Check if daily target is met ─── //
   const isTargetMet = dailyReviewTarget > 0 && stats.total >= dailyReviewTarget;
@@ -229,8 +243,8 @@ export default function ReviewScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4A90D9" />
+      <View style={[styles.centered, { backgroundColor: c.bg }]}>
+        <ActivityIndicator size="large" color={c.blue} />
       </View>
     );
   }
@@ -239,14 +253,14 @@ export default function ReviewScreen() {
 
   if (sessionDone && currentIndex >= reviewQueue.length) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
+      <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
         <Text style={styles.doneIcon}>🎉</Text>
-        <Text style={styles.doneTitle}>{t('review.sessionComplete')}</Text>
-        <Text style={styles.doneStats}>
+        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.sessionComplete')}</Text>
+        <Text style={[styles.doneStats, { color: c.textSecondary }]}>
           {stats.correct} / {stats.total} {t('review.correct')}
           {stats.total > 0 ? ` (${Math.round((stats.correct / stats.total) * 100)}%)` : ''}
         </Text>
-        <TouchableOpacity style={styles.homeBtn} onPress={goHome}>
+        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.accent }]} onPress={goHome}>
           <Text style={styles.homeBtnText}>{t('review.backToHome')}</Text>
         </TouchableOpacity>
       </View>
@@ -255,11 +269,11 @@ export default function ReviewScreen() {
 
   if (reviewQueue.length === 0) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
+      <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
         <Text style={styles.doneIcon}>✅</Text>
-        <Text style={styles.doneTitle}>{t('review.noCardsDue')}</Text>
-        <Text style={styles.doneSubtitle}>{t('review.noCardsSubtitle')}</Text>
-        <TouchableOpacity style={styles.homeBtn} onPress={goHome}>
+        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.noCardsDue')}</Text>
+        <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>{t('review.noCardsSubtitle')}</Text>
+        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.accent }]} onPress={goHome}>
           <Text style={styles.homeBtnText}>{t('review.backToHome')}</Text>
         </TouchableOpacity>
       </View>
@@ -270,21 +284,21 @@ export default function ReviewScreen() {
   if (!currentQuestion) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       {/* Header with back button */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
+      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: c.bg }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backButtonText}>← {t('review.back')}</Text>
+          <Text style={[styles.backButtonText, { color: c.accent }]}>← {t('review.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
           {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
         </Text>
-        <Text style={styles.headerProgress}>{currentIndex + 1}/{reviewQueue.length}</Text>
+        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{currentIndex + 1}/{reviewQueue.length}</Text>
       </View>
 
       {/* Progress bar */}
       <View style={styles.progressContainer}>
-        <View style={styles.progressBg}>
+        <View style={[styles.progressBg, { backgroundColor: c.border }]}>
           <View
             style={[
               styles.progressFill,
@@ -309,28 +323,28 @@ export default function ReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   centered: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#F5F5F5', padding: 32,
+    padding: 32,
   },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingBottom: 8, backgroundColor: '#F5F5F5',
+    paddingHorizontal: 16, paddingBottom: 8,
   },
   backButton: { paddingVertical: 8, paddingRight: 12 },
-  backButtonText: { fontSize: 15, color: '#6C63FF', fontWeight: '600' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
-  headerProgress: { fontSize: 14, color: '#888', fontWeight: '600' },
+  backButtonText: { fontSize: 15, fontWeight: '600' },
+  headerTitle: { fontSize: 16, fontWeight: '700' },
+  headerProgress: { fontSize: 14, fontWeight: '600' },
   progressContainer: { paddingHorizontal: 16, marginBottom: 8 },
-  progressBg: { height: 6, backgroundColor: '#E0E0E0', borderRadius: 3, overflow: 'hidden' },
+  progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#6C63FF', borderRadius: 3 },
   doneIcon: { fontSize: 64, marginBottom: 16 },
-  doneTitle: { fontSize: 24, fontWeight: '800', color: '#333', marginBottom: 8 },
-  doneStats: { fontSize: 16, color: '#666', marginBottom: 24 },
-  doneSubtitle: { fontSize: 14, color: '#888', marginBottom: 24, textAlign: 'center' },
+  doneTitle: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
+  doneStats: { fontSize: 16, marginBottom: 24 },
+  doneSubtitle: { fontSize: 14, marginBottom: 24, textAlign: 'center' },
   homeBtn: {
-    backgroundColor: '#6C63FF', borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14,
+    borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14,
   },
   homeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
