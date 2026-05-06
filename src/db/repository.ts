@@ -257,4 +257,10 @@ export class Repository {
     const rows = await this.db.query<any[]>('SELECT COUNT(*) as count FROM questions');
     return rows[0]?.count ?? 0;
   }
+
+  // ─── Raw SQL access (for review remove, etc.) ─── //
+
+  async run(sql: string, params?: any[]): Promise<void> {
+    await this.db.run(sql, params);
+  }
 }

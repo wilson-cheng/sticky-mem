@@ -12,65 +12,121 @@ interface SettingsState {
   incrementContentCount: () => void;
   questionsPerContent: number;
   setQuestionsPerContent: (n: number) => void;
+  questionsPerReview: number;
+  setQuestionsPerReview: (n: number) => void;
 }
 
-// Cross-platform storage: localStorage on web, expo-file-system on native
-function createStorage() {
+// ─── API Key storage (web: localStorage, native: expo-secure-store) ─── //
+
+let _secureApiKey: string | null = null;
+
+async function loadApiKey(): Promise<string> {
   if (Platform.OS === 'web') {
-    return {
-      getItem: (name: string) => {
-        try { return localStorage.getItem(name); }
-        catch { return null; }
-      },
-      setItem: (name: string, value: string) => {
-        try { localStorage.setItem(name, value); } catch {}
-      },
-      removeItem: (name: string) => {
-        try { localStorage.removeItem(name); } catch {}
-      },
-    };
+    try { return localStorage.getItem('stickymem-apikey') ?? ''; }
+    catch { return ''; }
   }
-
-  // Native (Expo Go): use expo-file-system (built-in)
-  let FileSystem: any = null;
-  const SETTINGS_FILE = () => {
-    if (!FileSystem) return 'stickymem-settings.json';
-    return FileSystem.documentDirectory + 'stickymem-settings.json';
-  };
-
-  return {
-    getItem: async (_name: string) => {
-      try {
-        FileSystem = FileSystem || require('expo-file-system');
-        const path = FileSystem.documentDirectory + 'stickymem-settings.json';
-        const content = await FileSystem.readAsStringAsync(path);
-        return content;
-      } catch { return null; }
-    },
-    setItem: async (_name: string, value: string) => {
-      try {
-        FileSystem = FileSystem || require('expo-file-system');
-        const path = FileSystem.documentDirectory + 'stickymem-settings.json';
-        await FileSystem.writeAsStringAsync(path, value);
-      } catch {}
-    },
-    removeItem: async (_name: string) => {
-      try {
-        FileSystem = FileSystem || require('expo-file-system');
-        const path = FileSystem.documentDirectory + 'stickymem-settings.json';
-        await FileSystem.deleteAsync(path, { idempotent: true });
-      } catch {}
-    },
-  };
+  try {
+    const SecureStore = await import('expo-secure-store');
+    const key = await SecureStore.getItemAsync('stickymem-apikey');
+    return key ?? '';
+  } catch { return ''; }
 }
 
-const storage = createStorage();
+async function saveApiKey(key: string): Promise<void> {
+  _secureApiKey = key;
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem('stickymem-apikey', key); }
+    catch {}
+    return;
+  }
+  try {
+    const SecureStore = await import('expo-secure-store');
+    await SecureStore.setItemAsync('stickymem-apikey', key);
+  } catch {}
+}
+
+async function removeApiKey(): Promise<void> {
+  _secureApiKey = null;
+  if (Platform.OS === 'web') {
+    try { localStorage.removeItem('stickymem-apikey'); }
+    catch {}
+    return;
+  }
+  try {
+    const SecureStore = await import('expo-secure-store');
+    await SecureStore.deleteItemAsync('stickymem-apikey');
+  } catch {}
+}
+
+// ─── Other settings storage (web: localStorage, native: expo-file-system) ─── //
+
+const SETTINGS_FILENAME = 'stickymem-settings.json';
+
+async function loadSettingsBlob(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    try { return localStorage.getItem('stickymem-settings-blob'); }
+    catch { return null; }
+  }
+  try {
+    const FS = await import('expo-file-system');
+    const path = FS.documentDirectory + SETTINGS_FILENAME;
+    return await FS.readAsStringAsync(path);
+  } catch { return null; }
+}
+
+async function saveSettingsBlob(value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem('stickymem-settings-blob', value); }
+    catch {}
+    return;
+  }
+  try {
+    const FS = await import('expo-file-system');
+    const path = FS.documentDirectory + SETTINGS_FILENAME;
+    await FS.writeAsStringAsync(path, value);
+  } catch {}
+}
+
+async function removeSettingsBlob(): Promise<void> {
+  if (Platform.OS === 'web') {
+    try { localStorage.removeItem('stickymem-settings-blob'); }
+    catch {}
+    return;
+  }
+  try {
+    const FS = await import('expo-file-system');
+    const path = FS.documentDirectory + SETTINGS_FILENAME;
+    await FS.deleteAsync(path, { idempotent: true });
+  } catch {}
+}
+
+// ─── Hybrid storage for zustand persist ─── //
+
+const storage = {
+  getItem: async (_name: string): Promise<string | null> => {
+    // Load settings blob (excludes apiKey which is stored separately)
+    const blob = await loadSettingsBlob();
+    if (!blob) return null;
+    return blob;
+  },
+  setItem: async (_name: string, value: string): Promise<void> => {
+    await saveSettingsBlob(value);
+  },
+  removeItem: async (_name: string): Promise<void> => {
+    await removeSettingsBlob();
+  },
+};
+
+// ─── Store creation ─── //
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       apiKey: '',
-      setApiKey: (key: string) => set({ apiKey: key, isConfigured: key.trim().length > 0 }),
+      setApiKey: (key: string) => {
+        set({ apiKey: key, isConfigured: key.trim().length > 0 });
+        saveApiKey(key); // fire-and-forget
+      },
       isConfigured: false,
       dailyReviewTarget: 5,
       setDailyReviewTarget: (n: number) => set({ dailyReviewTarget: n }),
@@ -78,17 +134,28 @@ export const useSettingsStore = create<SettingsState>()(
       incrementContentCount: () => set((s) => ({ contentCount: s.contentCount + 1 })),
       questionsPerContent: 6,
       setQuestionsPerContent: (n: number) => set({ questionsPerContent: n }),
+      questionsPerReview: 0, // 0 = auto (ask all due)
+      setQuestionsPerReview: (n: number) => set({ questionsPerReview: n }),
     }),
     {
       name: 'stickymem-settings',
       storage: createJSONStorage(() => storage),
       partialize: (state) => ({
-        apiKey: state.apiKey,
-        isConfigured: state.isConfigured,
         dailyReviewTarget: state.dailyReviewTarget,
         contentCount: state.contentCount,
         questionsPerContent: state.questionsPerContent,
+        questionsPerReview: state.questionsPerReview,
       }),
+      // After rehydration, load the API key from SecureStore
+      onRehydrateStorage: () => {
+        return async (state) => {
+          if (state) {
+            const key = await loadApiKey();
+            (state as any).apiKey = key;
+            (state as any).isConfigured = key.trim().length > 0;
+          }
+        };
+      },
     }
   )
 );

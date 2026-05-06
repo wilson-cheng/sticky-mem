@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Repository } from '../db/repository';
 import type { Question, Card } from '../types';
 
@@ -6,11 +6,14 @@ export function useSchedule(repo: Repository | null) {
   const [dueCount, setDueCount] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [loading, setLoading] = useState(true);
+  const isInitialLoad = useRef(true);
 
   const loadStats = useCallback(async () => {
     if (!repo) return;
     try {
-      setLoading(true);
+      if (isInitialLoad.current) {
+        setLoading(true);
+      }
       const due = await repo.getDueCards(Date.now());
       const total = await repo.getTotalQuestionCount();
       setDueCount(due.length);
@@ -19,6 +22,7 @@ export function useSchedule(repo: Repository | null) {
       console.error('Failed to load schedule:', e);
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
   }, [repo]);
 

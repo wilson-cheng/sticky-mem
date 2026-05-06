@@ -77,7 +77,7 @@ export default function AddContentScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.homeButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/')}
         >
           <Text style={styles.homeButtonText}>Back to Home</Text>
         </TouchableOpacity>

@@ -1,78 +1,149 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import QuestionCard from '../src/components/QuestionCard';
-import { useReview } from '../src/hooks/useReview';
 import { initDatabase } from '../src/hooks/useDatabase';
+import type { Question, Card, ReviewRecord } from '../src/types';
+import { sm2, calculateNextReview } from '../src/engine/sm2';
+import { useSettingsStore } from '../src/store/settings';
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export default function ReviewScreen() {
   const router = useRouter();
+  const questionsPerReview = useSettingsStore((s) => s.questionsPerReview);
+  const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
+
+  const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card })[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const {
-    currentQuestion, currentIndex, totalCount,
-    progress, isComplete, startSession, submitGrade,
-    results, updatedCards,
-  } = useReview();
+  const [stats, setStats] = useState({ correct: 0, total: 0 });
+  const [sessionDone, setSessionDone] = useState(false);
+  const repoRef = useRef<Awaited<ReturnType<typeof initDatabase>> | null>(null);
 
-  useEffect(() => {
-    loadDueCards();
-    async function loadDueCards() {
-      try {
-        const repo = await initDatabase();
-        const due = await repo.getDueCards(Date.now());
-        if (due.length > 0) {
-          startSession(due);
-        }
-      } catch (e) {
-        console.error('Failed to load due cards:', e);
-      } finally {
+  const loadCards = useCallback(async () => {
+    try {
+      setLoading(true);
+      const repo = await initDatabase();
+      repoRef.current = repo;
+
+      let due = await repo.getDueCards(Date.now());
+      if (due.length === 0) {
+        setReviewQueue([]);
         setLoading(false);
+        return;
       }
+
+      // Shuffle
+      let shuffled = shuffle(due);
+
+      // Apply questionsPerReview limit
+      const limit = questionsPerReview > 0 ? questionsPerReview : shuffled.length;
+      if (shuffled.length > limit) {
+        shuffled = shuffled.slice(0, limit);
+      }
+
+      setReviewQueue(shuffled);
+    } catch (e) {
+      console.error('Failed to load due cards:', e);
+      Alert.alert('Error', 'Failed to load review cards');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [questionsPerReview]);
 
-  const handleAnswer = (correct: boolean) => {
-    submitGrade(correct);
-  };
-
-  // Save session results when all questions answered
   useEffect(() => {
-    if (!isComplete || saving || results.length === 0) return;
-    saveSession();
-    async function saveSession() {
-      setSaving(true);
-      try {
-        const repo = await initDatabase();
-        const today = new Date().toISOString().split('T')[0];
-        let correctCount = 0;
+    loadCards();
+  }, [loadCards]);
 
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i];
-          const card = updatedCards?.[r.questionId];
-          if (!card) continue;
-          await repo.upsertCard(card);
-          await repo.insertReview({
-            id: `${card.lastReviewAt}-${Math.random().toString(36).slice(2, 8)}`,
-            questionId: r.questionId,
-            gradedAt: card.lastReviewAt,
-            grade: r.grade,
-          });
-          if (r.correct) correctCount++;
-        }
-
-        await repo.upsertDailyStats({
-          date: today,
-          totalReviewed: results.length,
-          correctCount,
-        });
-      } catch (e) {
-        console.error('Failed to save session:', e);
-      } finally {
-        setSaving(false);
+  const advance = useCallback(() => {
+    setCurrentIndex((i) => {
+      const next = i + 1;
+      if (next >= reviewQueue.length) {
+        setSessionDone(true);
       }
+      return next;
+    });
+  }, [reviewQueue.length]);
+
+  const handleGrade = useCallback(async (grade: number) => {
+    if (!repoRef.current) return;
+    const currentCard = reviewQueue[currentIndex];
+    if (!currentCard) return;
+
+    try {
+      const repo = repoRef.current;
+      const now = Date.now();
+
+      // Save review record
+      const review: ReviewRecord = {
+        id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+        questionId: currentCard.id,
+        gradedAt: now,
+        grade: grade as any,
+      };
+      await repo.insertReview(review);
+
+      // Update SM-2 card
+      const result = sm2(currentCard.card, grade);
+      await repo.upsertCard({
+        questionId: currentCard.id,
+        easiness: result.easiness,
+        interval: result.interval,
+        repetitions: result.repetitions,
+        nextReviewAt: calculateNextReview(result.interval, now),
+        lastReviewAt: now,
+      });
+
+      // Update daily stats
+      const today = new Date().toISOString().slice(0, 10);
+      const existingStats = await repo.getDailyStats(1);
+      const todayStats = existingStats.find((s) => s.date === today);
+      await repo.upsertDailyStats({
+        date: today,
+        totalReviewed: (todayStats?.totalReviewed ?? 0) + 1,
+        correctCount: (todayStats?.correctCount ?? 0) + (grade >= 3 ? 1 : 0),
+      });
+
+      setStats((s) => ({
+        correct: s.correct + (grade >= 3 ? 1 : 0),
+        total: s.total + 1,
+      }));
+
+      advance();
+    } catch (e) {
+      console.error('Failed to save grade:', e);
     }
-  }, [isComplete]);
+  }, [reviewQueue, currentIndex, advance]);
+
+  const handleIdk = useCallback(() => {
+    // Don't save anything — just move to next
+    advance();
+  }, [advance]);
+
+  const handleRemove = useCallback(async () => {
+    if (!repoRef.current) return;
+    const currentCard = reviewQueue[currentIndex];
+    if (!currentCard) return;
+
+    try {
+      const repo = repoRef.current;
+      await repo.run('DELETE FROM cards WHERE question_id = ?', [currentCard.id]);
+      await repo.run('DELETE FROM questions WHERE id = ?', [currentCard.id]);
+      advance();
+    } catch (e) {
+      console.error('Failed to remove question:', e);
+    }
+  }, [reviewQueue, currentIndex, advance]);
+
+  // ─── Render ─── //
 
   if (loading) {
     return (
@@ -82,100 +153,136 @@ export default function ReviewScreen() {
     );
   }
 
-  if (totalCount === 0) {
+  if (sessionDone && currentIndex >= reviewQueue.length) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyIcon}>🎉</Text>
-        <Text style={styles.emptyTitle}>All caught up!</Text>
-        <Text style={styles.emptySubtitle}>
-          No questions due for review. Add some content first!
+        <Text style={styles.doneIcon}>🎉</Text>
+        <Text style={styles.doneTitle}>Session Complete!</Text>
+        <Text style={styles.doneStats}>
+          {stats.correct} / {stats.total} correct
+          {stats.total > 0 ? ` (${Math.round((stats.correct / stats.total) * 100)}%)` : ''}
         </Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/add')}>
-          <Text style={styles.addButtonText}>Add Content</Text>
-        </TouchableOpacity>
+        <View style={styles.doneButtons}>
+          <ReviewButton
+            label="Back to Home"
+            onPress={() => router.push('/')}
+            color="#6C63FF"
+          />
+        </View>
       </View>
     );
   }
 
-  if (isComplete) {
-    const correctCount = results.filter(r => r.correct).length;
-    const accuracy = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
-
+  if (reviewQueue.length === 0) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyIcon}>{saving ? '💾' : '✅'}</Text>
-        <Text style={styles.emptyTitle}>
-          {saving ? 'Saving Results...' : 'Session Complete!'}
-        </Text>
-        {!saving && (
-          <>
-            <Text style={styles.emptySubtitle}>
-              You reviewed {totalCount} questions
-            </Text>
-            <View style={styles.sessionStats}>
-              <View style={styles.sessionStatBox}>
-                <Text style={styles.sessionStatNum}>{accuracy}%</Text>
-                <Text style={styles.sessionStatLabel}>Accuracy</Text>
-              </View>
-              <View style={styles.sessionStatBox}>
-                <Text style={[styles.sessionStatNum, { color: '#2E7D32' }]}>{correctCount}</Text>
-                <Text style={styles.sessionStatLabel}>Correct</Text>
-              </View>
-              <View style={styles.sessionStatBox}>
-                <Text style={[styles.sessionStatNum, { color: '#C62828' }]}>{totalCount - correctCount}</Text>
-                <Text style={styles.sessionStatLabel}>Wrong</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.addButton} onPress={() => router.back()}>
-              <Text style={styles.addButtonText}>Back to Home</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <Text style={styles.doneIcon}>✅</Text>
+        <Text style={styles.doneTitle}>No cards due!</Text>
+        <Text style={styles.doneSubtitle}>Come back later for your next review.</Text>
+        <View style={styles.doneButtons}>
+          <ReviewButton
+            label="Back to Home"
+            onPress={() => router.push('/')}
+            color="#6C63FF"
+          />
+        </View>
       </View>
     );
   }
+
+  if (sessionDone) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.doneIcon}>🎉</Text>
+        <Text style={styles.doneTitle}>Session Complete!</Text>
+        <Text style={styles.doneStats}>
+          {stats.correct} / {stats.total} correct
+          {stats.total > 0 ? ` (${Math.round((stats.correct / stats.total) * 100)}%)` : ''}
+        </Text>
+        <View style={styles.doneButtons}>
+          <ReviewButton
+            label="Back to Home"
+            onPress={() => router.push('/')}
+            color="#6C63FF"
+          />
+        </View>
+      </View>
+    );
+  }
+
+  const currentQuestion = reviewQueue[currentIndex];
+  if (!currentQuestion) return null;
 
   return (
     <View style={styles.container}>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+      {/* Progress bar */}
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBg}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${((currentIndex) / reviewQueue.length) * 100}%` },
+            ]}
+          />
+        </View>
+        <Text style={styles.progressText}>
+          {currentIndex + 1} / {reviewQueue.length}
+        </Text>
       </View>
-      <Text style={styles.progressText}>
-        {currentIndex + 1} / {totalCount}
-      </Text>
 
-      {currentQuestion && (
-        <QuestionCard
-          key={currentQuestion.id}
-          question={currentQuestion}
-          onAnswer={handleAnswer}
-        />
-      )}
+      <QuestionCard
+        key={currentQuestion.id}
+        question={currentQuestion}
+        onGrade={handleGrade}
+        onIdk={handleIdk}
+        onRemove={handleRemove}
+        showRemove={true}
+        correctAutoAdvanceMs={5000}
+      />
+    </View>
+  );
+}
+
+function ReviewButton({ label, onPress, color }: {
+  label: string;
+  onPress: () => void;
+  color: string;
+}) {
+  return (
+    <View
+      style={[styles.reviewActionBtn, { backgroundColor: color }]}
+      onTouchEnd={onPress}
+    >
+      <Text style={styles.reviewActionBtnText}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', paddingTop: 8 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5', padding: 32 },
-  progressBar: {
-    height: 4, backgroundColor: '#E0E0E0', marginHorizontal: 16, borderRadius: 2,
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  centered: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#F5F5F5', padding: 32,
   },
-  progressFill: { height: 4, backgroundColor: '#4A90D9', borderRadius: 2 },
-  progressText: { textAlign: 'center', fontSize: 14, color: '#666', marginVertical: 8 },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { fontSize: 24, fontWeight: '700', color: '#333', marginBottom: 8 },
-  emptySubtitle: { fontSize: 16, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  addButton: {
-    backgroundColor: '#4A90D9', borderRadius: 10, paddingHorizontal: 32, paddingVertical: 14,
+  progressContainer: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4,
   },
-  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  sessionStats: { flexDirection: 'row', gap: 12, marginBottom: 24, width: '100%' },
-  sessionStatBox: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 16,
-    alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  progressBg: {
+    flex: 1, height: 6, backgroundColor: '#E0E0E0', borderRadius: 3,
+    overflow: 'hidden',
   },
-  sessionStatNum: { fontSize: 28, fontWeight: '800', color: '#333' },
-  sessionStatLabel: { fontSize: 12, color: '#888', marginTop: 4 },
+  progressFill: {
+    height: '100%', backgroundColor: '#6C63FF', borderRadius: 3,
+  },
+  progressText: { fontSize: 13, color: '#888', fontWeight: '600' },
+  doneIcon: { fontSize: 64, marginBottom: 16 },
+  doneTitle: { fontSize: 24, fontWeight: '800', color: '#333', marginBottom: 8 },
+  doneStats: { fontSize: 16, color: '#666', marginBottom: 24 },
+  doneSubtitle: { fontSize: 14, color: '#888', marginBottom: 24, textAlign: 'center' },
+  doneButtons: { flexDirection: 'row', gap: 12 },
+  reviewActionBtn: {
+    borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14,
+  },
+  reviewActionBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

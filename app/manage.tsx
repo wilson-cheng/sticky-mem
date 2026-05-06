@@ -46,6 +46,7 @@ export default function ManageContentScreen() {
           text: 'Delete', style: 'destructive', onPress: async () => {
             try {
               const repo = await initDatabase();
+              await repo.deleteQuestionsByContentId(id);
               await repo.deleteContent(id);
               setContents(prev => prev.filter(c => c.id !== id));
             } catch (e) {

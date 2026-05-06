@@ -6,7 +6,7 @@ import { useSettingsStore } from '../src/store/settings';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-  const { apiKey, setApiKey, isConfigured, dailyReviewTarget, setDailyReviewTarget, questionsPerContent, setQuestionsPerContent } = useSettingsStore();
+  const { apiKey, setApiKey, isConfigured, dailyReviewTarget, setDailyReviewTarget, questionsPerContent, setQuestionsPerContent, questionsPerReview, setQuestionsPerReview } = useSettingsStore();
   const [localKey, setLocalKey] = useState(apiKey);
   const router = useRouter();
 
@@ -81,6 +81,24 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <Text style={styles.label}>Questions per Review Round</Text>
+      <Text style={styles.hint}>Set to 0 for auto (all due questions)</Text>
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={styles.numberButton}
+          onPress={() => setQuestionsPerReview(Math.max(0, questionsPerReview - 1))}
+        >
+          <Text style={styles.numberButtonText}>−</Text>
+        </TouchableOpacity>
+        <Text style={styles.numberValue}>{questionsPerReview === 0 ? 'Auto' : questionsPerReview}</Text>
+        <TouchableOpacity
+          style={styles.numberButton}
+          onPress={() => setQuestionsPerReview(Math.min(50, questionsPerReview + 1))}
+        >
+          <Text style={styles.numberButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={styles.manageBtn}
         onPress={() => router.push('/manage')}
@@ -115,6 +133,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusText: { color: '#2E7D32', fontSize: 14, fontWeight: '500' },
+  hint: { fontSize: 12, color: '#999', marginTop: -4, marginBottom: 4 },
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginTop: 8, gap: 20,
