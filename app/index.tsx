@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useSchedule } from '../src/hooks/useSchedule';
 import { useSettingsStore } from '../src/store/settings';
@@ -8,8 +8,14 @@ import { useSettingsStore } from '../src/store/settings';
 export default function HomeScreen() {
   const router = useRouter();
   const repo = useDatabase();
-  const { dueCount, totalQuestions, loading } = useSchedule(repo);
+  const { dueCount, totalQuestions, loading, refresh } = useSchedule(repo);
   const isConfigured = useSettingsStore((s) => s.isConfigured);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   return (
     <View style={styles.container}>

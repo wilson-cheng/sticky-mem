@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Repository } from '../db/repository';
 import type { Question, Card } from '../types';
 
@@ -7,28 +7,24 @@ export function useSchedule(repo: Repository | null) {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadStats = useCallback(async () => {
     if (!repo) return;
-    loadStats();
-
-    async function loadStats() {
-      try {
-        const due = await repo.getDueCards(Date.now());
-        const total = await repo.getTotalQuestionCount();
-        setDueCount(due.length);
-        setTotalQuestions(total);
-      } catch (e) {
-        console.error('Failed to load schedule:', e);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      setLoading(true);
+      const due = await repo.getDueCards(Date.now());
+      const total = await repo.getTotalQuestionCount();
+      setDueCount(due.length);
+      setTotalQuestions(total);
+    } catch (e) {
+      console.error('Failed to load schedule:', e);
+    } finally {
+      setLoading(false);
     }
   }, [repo]);
 
-  const loadDueCards = async (): Promise<(Question & { card: Card })[]> => {
-    if (!repo) return [];
-    return repo.getDueCards(Date.now());
-  };
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
-  return { dueCount, totalQuestions, loading, loadDueCards };
+  return { dueCount, totalQuestions, loading, refresh: loadStats };
 }
