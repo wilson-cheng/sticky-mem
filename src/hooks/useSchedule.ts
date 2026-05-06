@@ -10,7 +10,6 @@ export function useSchedule(repo: Repository | null) {
   const [todayCorrect, setTodayCorrect] = useState(0);
   const [loading, setLoading] = useState(true);
   const isInitialLoad = useRef(true);
-  const questionsPerReview = useSettingsStore((s) => s.questionsPerReview);
 
   const loadStats = useCallback(async () => {
     if (!repo) return;
@@ -22,9 +21,8 @@ export function useSchedule(repo: Repository | null) {
       const total = await repo.getTotalQuestionCount();
       const reviewed = await repo.getTodayReviewedCount();
       const correct = await repo.getTodayCorrectCount();
-      // Apply questionsPerReview limit if set (> 0)
-      const limit = questionsPerReview > 0 ? questionsPerReview : due.length;
-      setDueCount(Math.min(due.length, limit));
+      // Show actual due count (not capped by questionsPerReview — that's for review rounds only)
+      setDueCount(due.length);
       setTotalQuestions(total);
       setTodayReviewed(reviewed);
       setTodayCorrect(correct);
@@ -34,7 +32,7 @@ export function useSchedule(repo: Repository | null) {
       setLoading(false);
       isInitialLoad.current = false;
     }
-  }, [repo, questionsPerReview]);
+  }, [repo]);
 
   useEffect(() => {
     loadStats();
