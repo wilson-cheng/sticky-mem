@@ -7,9 +7,11 @@ import { digestContent } from '../src/llm/digest';
 import { generateQuestions } from '../src/llm/questions';
 import { initDatabase } from '../src/hooks/useDatabase';
 import { useSettingsStore } from '../src/store/settings';
+import { useTranslation } from '../src/i18n/useTranslation';
 
 export default function AddContentScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const apiClient = useApiClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState<{ title: string; count: number } | null>(null);
@@ -60,11 +62,11 @@ export default function AddContentScreen() {
     return (
       <View style={styles.successContainer}>
         <Text style={styles.successIcon}>✅</Text>
-        <Text style={styles.successTitle}>Content Added!</Text>
+        <Text style={styles.successTitle}>{t('add.successTitle')}</Text>
         <Text style={styles.successSubtitle}>"{success.title}"</Text>
         <View style={styles.successCountBox}>
           <Text style={styles.successCountNum}>{success.count}</Text>
-          <Text style={styles.successCountLabel}>questions generated</Text>
+          <Text style={styles.successCountLabel}>{t('add.questionsGenerated')}</Text>
         </View>
         <TouchableOpacity
           style={styles.reviewButton}
@@ -73,13 +75,13 @@ export default function AddContentScreen() {
             router.push('/review');
           }}
         >
-          <Text style={styles.reviewButtonText}>Start Review Now</Text>
+          <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.homeButton}
           onPress={() => router.replace('/')}
         >
-          <Text style={styles.homeButtonText}>Back to Home</Text>
+          <Text style={styles.homeButtonText}>{t('add.backToHome')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -92,16 +94,16 @@ export default function AddContentScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Add Content</Text>
+        <Text style={styles.title}>{t('add.title')}</Text>
         <Text style={styles.subtitle}>
-          Paste text or a URL, and StickyMem will digest it into spaced-repetition questions.
+          {t('add.subtitle')}
         </Text>
         <AddContentForm onSubmit={handleSubmit} isProcessing={isProcessing} />
         {isProcessing && (
           <View style={styles.processingBox}>
-            <Text style={styles.processingText}>Processing content...</Text>
+            <Text style={styles.processingText}>{t('add.processingTitle')}</Text>
             <Text style={styles.processingDetail}>
-              Your DeepSeek key is being used to generate {questionsPerContent} recall questions. This may take a few seconds.
+              {t('add.processingDetail', { count: questionsPerContent })}
             </Text>
           </View>
         )}

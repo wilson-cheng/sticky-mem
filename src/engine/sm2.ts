@@ -31,16 +31,20 @@ export function sm2(card: SM2Input, grade: number): SM2Output {
   if (easiness < 1.3) easiness = 1.3;
 
   if (grade < 3) {
-    // Incorrect — reset
+    // Incorrect — reset, but re-appear even sooner (same day)
     repetitions = 0;
-    interval = 1;
+    interval = 0;        // ← was 1 (next day); now 0 = same-day re-review
+  } else if (grade === 3) {
+    // Correct but difficult — treat as first-time review
+    repetitions = Math.max(1, repetitions);
+    interval = 1;        // Come back tomorrow
   } else {
-    // Correct — advance interval
+    // Correct (grade 4-5) — advance interval per SM‑2
     repetitions += 1;
     if (repetitions === 1) {
       interval = 1;
     } else if (repetitions === 2) {
-      interval = 6;
+      interval = 3;      // ← was 6; shorter early intervals let us re-ask sooner
     } else {
       interval = Math.round(interval * easiness);
     }

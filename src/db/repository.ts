@@ -13,6 +13,15 @@ export class Repository {
     return new Repository(db);
   }
 
+  /** Delete ALL data — contents, questions, cards, reviews, daily_stats */
+  async clearAll(): Promise<void> {
+    await this.db.run('DELETE FROM reviews');
+    await this.db.run('DELETE FROM cards');
+    await this.db.run('DELETE FROM questions');
+    await this.db.run('DELETE FROM contents');
+    await this.db.run('DELETE FROM daily_stats');
+  }
+
   // ─── Content ─── //
 
   async insertContent(content: Content): Promise<void> {
@@ -206,6 +215,27 @@ export class Repository {
 
   // ─── Counts ─── //
 
+  async getTotalQuestionCount(): Promise<number> {
+    const rows = await this.db.query<any[]>('SELECT COUNT(*) as count FROM questions');
+    return rows[0]?.count ?? 0;
+  }
+
+  async getTodayReviewedCount(): Promise<number> {
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = await this.db.query<any[]>(
+      'SELECT total_reviewed FROM daily_stats WHERE date = ?', [today]
+    );
+    return rows[0]?.total_reviewed ?? 0;
+  }
+
+  async getTodayCorrectCount(): Promise<number> {
+    const today = new Date().toISOString().slice(0, 10);
+    const rows = await this.db.query<any[]>(
+      'SELECT correct_count FROM daily_stats WHERE date = ?', [today]
+    );
+    return rows[0]?.correct_count ?? 0;
+  }
+
   async saveContentWithQuestions(params: {
     sourceType: string;
     title: string;
@@ -251,11 +281,6 @@ export class Repository {
         lastReviewAt: 0,
       });
     }
-  }
-
-  async getTotalQuestionCount(): Promise<number> {
-    const rows = await this.db.query<any[]>('SELECT COUNT(*) as count FROM questions');
-    return rows[0]?.count ?? 0;
   }
 
   // ─── Raw SQL access (for review remove, etc.) ─── //

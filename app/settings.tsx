@@ -1,36 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 } from 'react-native';
+import { useTranslation } from '../src/i18n/useTranslation';
 import { useSettingsStore } from '../src/store/settings';
 import { useRouter } from 'expo-router';
+import { initDatabase } from '../src/hooks/useDatabase';
+
+function LanguageSelector({
+  value, onChange,
+}: {
+  value: 'en' | 'zh-Hans' | 'zh-Hant';
+  onChange: (v: 'en' | 'zh-Hans' | 'zh-Hant') => void;
+}) {
+  const options: { label: string; value: 'en' | 'zh-Hans' | 'zh-Hant' }[] = [
+    { label: 'English', value: 'en' },
+    { label: '简体中文', value: 'zh-Hans' },
+    { label: '繁體中文', value: 'zh-Hant' },
+  ];
+  return (
+    <View style={styles.optionsRow}>
+      {options.map((o) => (
+        <TouchableOpacity
+          key={o.value}
+          style={[styles.optionChip, value === o.value && styles.optionChipActive]}
+          onPress={() => onChange(o.value)}
+        >
+          <Text style={[styles.optionChipText, value === o.value && styles.optionChipTextActive]}>
+            {o.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function ThemeSelector({
+  value, onChange,
+}: {
+  value: 'light' | 'dark';
+  onChange: (v: 'light' | 'dark') => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.optionsRow}>
+      <TouchableOpacity
+        style={[styles.optionChip, value === 'light' && styles.optionChipActive]}
+        onPress={() => onChange('light')}
+      >
+        <Text style={[styles.optionChipText, value === 'light' && styles.optionChipTextActive]}>
+            ☀️ {t('settings.light')}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.optionChip, value === 'dark' && styles.optionChipActive]}
+        onPress={() => onChange('dark')}
+      >
+        <Text style={[styles.optionChipText, value === 'dark' && styles.optionChipTextActive]}>
+            🌙 {t('settings.dark')}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
-  const { apiKey, setApiKey, isConfigured, dailyReviewTarget, setDailyReviewTarget, questionsPerContent, setQuestionsPerContent, questionsPerReview, setQuestionsPerReview } = useSettingsStore();
+  const {
+    apiKey, setApiKey, isConfigured,
+    dailyReviewTarget, setDailyReviewTarget,
+    questionsPerContent, setQuestionsPerContent,
+    questionsPerReview, setQuestionsPerReview,
+    theme, setTheme,
+    language, setLanguage,
+  } = useSettingsStore();
   const [localKey, setLocalKey] = useState(apiKey);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleSave = () => {
     if (localKey.trim() && !localKey.startsWith('sk-')) {
-      Alert.alert('Warning', 'DeepSeek API keys usually start with "sk-". Please verify your key.');
+      Alert.alert(t('settings.apiKeyWarning'), t('settings.apiKeyWarning'));
       return;
     }
     setApiKey(localKey.trim());
-    Alert.alert('Saved', 'API key has been saved locally.', [
+    Alert.alert(t('settings.apiKeySaved'), t('settings.apiKeySaved'), [
       { text: 'OK', onPress: () => router.back() },
     ]);
   };
 
+  const handleClearAll = useCallback(() => {
+    Alert.alert(
+      t('settings.clearAllTitle'),
+      t('settings.clearAllConfirm'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        {
+          text: t('settings.clearEverything'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const repo = await initDatabase();
+              await repo.clearAll();
+              Alert.alert(t('settings.clearAllDone'), t('settings.clearAllDone'));
+            } catch (e) {
+              console.error('Failed to clear all:', e);
+              Alert.alert(t('settings.clearAllError'), t('settings.clearAllError'));
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>API Configuration</Text>
+      <Text style={styles.sectionTitle}>{t('settings.title')}</Text>
       <Text style={styles.description}>
-        StickyMem uses your own DeepSeek API key. No data is sent anywhere else.
+        {t('settings.description')}
         Get a key at{' '}
         <Text style={styles.link}>platform.deepseek.com</Text>
       </Text>
 
-      <Text style={styles.label}>DeepSeek API Key</Text>
+      <Text style={styles.label}>{t('settings.apiKey')}</Text>
       <TextInput
         style={styles.input}
         value={localKey}
@@ -43,11 +134,33 @@ export default function SettingsScreen() {
 
       {isConfigured && (
         <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>✅ API key configured</Text>
+          <Text style={styles.statusText}>✅ {t('settings.apiKeyConfigured')}</Text>
         </View>
       )}
 
-      <Text style={styles.label}>Daily Review Target</Text>
+      <TouchableOpacity
+        style={[styles.saveButton, !localKey.trim() && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={!localKey.trim()}
+      >
+        <Text style={styles.saveButtonText}>{t('settings.save')}</Text>
+      </TouchableOpacity>
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>{t('settings.appearance')}</Text>
+
+      <Text style={styles.label}>{t('settings.theme')}</Text>
+      <ThemeSelector value={theme} onChange={setTheme} />
+
+      <Text style={styles.label}>{t('settings.language')}</Text>
+      <LanguageSelector value={language} onChange={setLanguage} />
+
+      <View style={styles.divider} />
+
+      <Text style={styles.sectionTitle}>{t('settings.reviewSettings')}</Text>
+
+      <Text style={styles.label}>{t('settings.dailyTarget')}</Text>
       <View style={styles.row}>
         <TouchableOpacity
           style={styles.numberButton}
@@ -64,7 +177,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Questions per Content</Text>
+      <Text style={styles.label}>{t('settings.questionsPerContent')}</Text>
       <View style={styles.row}>
         <TouchableOpacity
           style={styles.numberButton}
@@ -81,8 +194,8 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Questions per Review Round</Text>
-      <Text style={styles.hint}>Set to 0 for auto (all due questions)</Text>
+      <Text style={styles.label}>{t('settings.questionsPerReview')}</Text>
+      <Text style={styles.hint}>{t('settings.autoHint')}</Text>
       <View style={styles.row}>
         <TouchableOpacity
           style={styles.numberButton}
@@ -90,7 +203,7 @@ export default function SettingsScreen() {
         >
           <Text style={styles.numberButtonText}>−</Text>
         </TouchableOpacity>
-        <Text style={styles.numberValue}>{questionsPerReview === 0 ? 'Auto' : questionsPerReview}</Text>
+        <Text style={styles.numberValue}>{questionsPerReview === 0 ? t('settings.auto') : questionsPerReview}</Text>
         <TouchableOpacity
           style={styles.numberButton}
           onPress={() => setQuestionsPerReview(Math.min(50, questionsPerReview + 1))}
@@ -99,19 +212,20 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.divider} />
+
       <TouchableOpacity
         style={styles.manageBtn}
         onPress={() => router.push('/manage')}
       >
-        <Text style={styles.manageBtnText}>📂 Manage Content</Text>
+        <Text style={styles.manageBtnText}>📂 {t('settings.manage')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.saveButton, !localKey.trim() && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={!localKey.trim()}
+        style={styles.dangerBtn}
+        onPress={handleClearAll}
       >
-        <Text style={styles.saveButtonText}>Save</Text>
+        <Text style={styles.dangerBtnText}>🗑️ {t('settings.clearAll')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -134,6 +248,7 @@ const styles = StyleSheet.create({
   },
   statusText: { color: '#2E7D32', fontSize: 14, fontWeight: '500' },
   hint: { fontSize: 12, color: '#999', marginTop: -4, marginBottom: 4 },
+  divider: { height: 1, backgroundColor: '#EEE', marginVertical: 24 },
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginTop: 8, gap: 20,
@@ -144,15 +259,33 @@ const styles = StyleSheet.create({
   },
   numberButtonText: { fontSize: 24, color: '#333', fontWeight: '600' },
   numberValue: { fontSize: 28, fontWeight: '700', color: '#333', minWidth: 40, textAlign: 'center' },
+  optionsRow: {
+    flexDirection: 'row', gap: 10, marginTop: 4,
+  },
+  optionChip: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    alignItems: 'center', backgroundColor: '#F5F5F5',
+    borderWidth: 1.5, borderColor: '#E0E0E0',
+  },
+  optionChipActive: {
+    backgroundColor: '#E8E0FF', borderColor: '#6C63FF',
+  },
+  optionChipText: { fontSize: 14, fontWeight: '500', color: '#666' },
+  optionChipTextActive: { color: '#6C63FF', fontWeight: '700' },
   manageBtn: {
     backgroundColor: '#F0EDFF', borderRadius: 10, padding: 14, alignItems: 'center',
-    marginTop: 20, borderWidth: 1, borderColor: '#D5D0FF',
+    marginBottom: 12, borderWidth: 1, borderColor: '#D5D0FF',
   },
   manageBtnText: { color: '#6C63FF', fontSize: 15, fontWeight: '600' },
   saveButton: {
-    backgroundColor: '#4A90D9', borderRadius: 10, padding: 16,
-    alignItems: 'center', marginTop: 32,
+    backgroundColor: '#4A90D9', borderRadius: 10, padding: 14,
+    alignItems: 'center', marginTop: 20,
   },
   saveButtonDisabled: { backgroundColor: '#CCC' },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  saveButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  dangerBtn: {
+    backgroundColor: '#FFF0F0', borderRadius: 10, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: '#FFCDD2',
+  },
+  dangerBtnText: { color: '#C62828', fontSize: 15, fontWeight: '600' },
 });

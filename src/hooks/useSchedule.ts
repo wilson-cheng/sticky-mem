@@ -5,6 +5,8 @@ import type { Question, Card } from '../types';
 export function useSchedule(repo: Repository | null) {
   const [dueCount, setDueCount] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
+  const [todayReviewed, setTodayReviewed] = useState(0);
+  const [todayCorrect, setTodayCorrect] = useState(0);
   const [loading, setLoading] = useState(true);
   const isInitialLoad = useRef(true);
 
@@ -16,8 +18,12 @@ export function useSchedule(repo: Repository | null) {
       }
       const due = await repo.getDueCards(Date.now());
       const total = await repo.getTotalQuestionCount();
+      const reviewed = await repo.getTodayReviewedCount();
+      const correct = await repo.getTodayCorrectCount();
       setDueCount(due.length);
       setTotalQuestions(total);
+      setTodayReviewed(reviewed);
+      setTodayCorrect(correct);
     } catch (e) {
       console.error('Failed to load schedule:', e);
     } finally {
@@ -30,5 +36,5 @@ export function useSchedule(repo: Repository | null) {
     loadStats();
   }, [loadStats]);
 
-  return { dueCount, totalQuestions, loading, refresh: loadStats };
+  return { dueCount, totalQuestions, todayReviewed, todayCorrect, loading, refresh: loadStats };
 }

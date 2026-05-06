@@ -6,19 +6,27 @@ import { useDatabase } from '../src/hooks/useDatabase';
 import { useSchedule } from '../src/hooks/useSchedule';
 import { useSettingsStore } from '../src/store/settings';
 import StickyMemLogo from '../src/components/StickyMemLogo';
+import { useTranslation } from '../src/i18n/useTranslation';
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const repo = useDatabase();
-  const { dueCount, totalQuestions, loading, refresh } = useSchedule(repo);
+  const { dueCount, totalQuestions, todayReviewed, loading, refresh } = useSchedule(repo);
   const isConfigured = useSettingsStore((s) => s.isConfigured);
+  const isHydrated = useSettingsStore((s) => s.isHydrated);
+  const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
       refresh();
     }, [refresh])
   );
+
+  // Determine if the daily target has been met
+  const targetMet = dailyReviewTarget > 0 && todayReviewed >= dailyReviewTarget;
+  const buttonLabel = targetMet && dueCount > 0 ? t('home.reviewMore') : t('home.startReview');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -40,24 +48,40 @@ export default function HomeScreen() {
           onPress={() => router.push('/review')}
           disabled={dueCount === 0 && !loading}
         >
-          <Text style={styles.reviewCardTitle}>Today's Review</Text>
+          <Text style={styles.reviewCardTitle}>{t('home.todayReview')}</Text>
           {loading ? (
             <Text style={styles.reviewCardCount}>...</Text>
           ) : dueCount > 0 ? (
             <>
               <Text style={styles.reviewCardCount}>{dueCount}</Text>
-              <Text style={styles.reviewCardLabel}>questions due</Text>
-              <Text style={styles.startButton}>Start Review</Text>
+              <Text style={styles.reviewCardLabel}>
+                {dueCount === 1 ? t('home.questionReady') : t('home.questionsReady')}
+              </Text>
+              {todayReviewed > 0 && (
+                <Text style={styles.progressLabel}>
+                  {todayReviewed} {t('home.reviewedToday')}{targetMet ? ' ✅' : ''}
+                </Text>
+              )}
+              <Text style={styles.startButton}>{buttonLabel}</Text>
             </>
           ) : totalQuestions > 0 ? (
             <>
               <Text style={styles.reviewCardCount}>0</Text>
-              <Text style={styles.reviewCardLabel}>questions due — you're all caught up! 🎉</Text>
+              <Text style={styles.reviewCardLabel}>
+                {todayReviewed > 0
+                  ? t('home.allDone')
+                  : t('home.noneDue')}
+              </Text>
+              {todayReviewed > 0 && (
+                <Text style={styles.progressLabel}>
+                  {todayReviewed} {t('home.reviewedToday')} ✅
+                </Text>
+              )}
             </>
           ) : (
             <>
               <Text style={styles.reviewCardCount}>0</Text>
-              <Text style={styles.reviewCardLabel}>No content yet. Add something to learn!</Text>
+              <Text style={styles.reviewCardLabel}>{t('home.noContent')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -66,21 +90,23 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{totalQuestions}</Text>
-            <Text style={styles.statLabel}>Total Questions</Text>
+            <Text style={styles.statLabel}>{t('home.totalCards')}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{dueCount}</Text>
-            <Text style={styles.statLabel}>Due Today</Text>
+            <Text style={styles.statLabel}>{t('home.readyToReview')}</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{todayReviewed}</Text>
+            <Text style={styles.statLabel}>{t('home.reviewedTodayLabel')}</Text>
           </View>
         </View>
 
-        {/* API Key Warning */}
-        {!isConfigured && (
+        {/* API Key Warning — only show after hydration is complete */}
+        {!loading && isHydrated && !isConfigured && (
           <TouchableOpacity style={styles.warningCard} onPress={() => router.push('/settings')}>
             <Text style={styles.warningIcon}>⚠️</Text>
-            <Text style={styles.warningText}>
-              API key not configured. Go to Settings to add your DeepSeek key.
-            </Text>
+            <Text style={styles.warningText}>{t('home.apiKeyWarning')}</Text>
           </TouchableOpacity>
         )}
 
@@ -88,11 +114,11 @@ export default function HomeScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/add')}>
             <Text style={styles.actionIcon}>📝</Text>
-            <Text style={styles.actionText}>Add Content</Text>
+            <Text style={styles.actionText}>{t('home.addContent')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/progress')}>
-            <Text style={styles.actionIcon}>📊</Text>
-            <Text style={styles.actionText}>Progress</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/manage')}>
+            <Text style={styles.actionIcon}>📂</Text>
+            <Text style={styles.actionText}>{t('home.manage')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -118,7 +144,8 @@ const styles = StyleSheet.create({
   },
   reviewCardTitle: { fontSize: 18, fontWeight: '600', color: '#666', marginBottom: 8 },
   reviewCardCount: { fontSize: 64, fontWeight: '800', color: '#4A90D9' },
-  reviewCardLabel: { fontSize: 14, color: '#888', marginTop: 4, marginBottom: 16 },
+  reviewCardLabel: { fontSize: 14, color: '#888', marginTop: 4, marginBottom: 4 },
+  progressLabel: { fontSize: 13, color: '#4CAF50', marginBottom: 12, fontWeight: '500' },
   startButton: {
     backgroundColor: '#4A90D9', borderRadius: 12, paddingHorizontal: 32, paddingVertical: 12,
     color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', overflow: 'hidden',

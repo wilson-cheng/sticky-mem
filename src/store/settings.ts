@@ -6,6 +6,7 @@ interface SettingsState {
   apiKey: string;
   setApiKey: (key: string) => void;
   isConfigured: boolean;
+  isHydrated: boolean;
   dailyReviewTarget: number;
   setDailyReviewTarget: (n: number) => void;
   contentCount: number;
@@ -14,6 +15,10 @@ interface SettingsState {
   setQuestionsPerContent: (n: number) => void;
   questionsPerReview: number;
   setQuestionsPerReview: (n: number) => void;
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
+  language: 'en' | 'zh-Hans' | 'zh-Hant';
+  setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => void;
 }
 
 // ─── API Key storage (web: localStorage, native: expo-secure-store) ─── //
@@ -104,7 +109,6 @@ async function removeSettingsBlob(): Promise<void> {
 
 const storage = {
   getItem: async (_name: string): Promise<string | null> => {
-    // Load settings blob (excludes apiKey which is stored separately)
     const blob = await loadSettingsBlob();
     if (!blob) return null;
     return blob;
@@ -125,17 +129,22 @@ export const useSettingsStore = create<SettingsState>()(
       apiKey: '',
       setApiKey: (key: string) => {
         set({ apiKey: key, isConfigured: key.trim().length > 0 });
-        saveApiKey(key); // fire-and-forget
+        saveApiKey(key);
       },
       isConfigured: false,
+      isHydrated: false,
       dailyReviewTarget: 5,
       setDailyReviewTarget: (n: number) => set({ dailyReviewTarget: n }),
       contentCount: 0,
       incrementContentCount: () => set((s) => ({ contentCount: s.contentCount + 1 })),
       questionsPerContent: 6,
       setQuestionsPerContent: (n: number) => set({ questionsPerContent: n }),
-      questionsPerReview: 0, // 0 = auto (ask all due)
+      questionsPerReview: 0,
       setQuestionsPerReview: (n: number) => set({ questionsPerReview: n }),
+      theme: 'light',
+      setTheme: (t: 'light' | 'dark') => set({ theme: t }),
+      language: 'en',
+      setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => set({ language: l }),
     }),
     {
       name: 'stickymem-settings',
@@ -145,14 +154,16 @@ export const useSettingsStore = create<SettingsState>()(
         contentCount: state.contentCount,
         questionsPerContent: state.questionsPerContent,
         questionsPerReview: state.questionsPerReview,
+        theme: state.theme,
+        language: state.language,
       }),
-      // After rehydration, load the API key from SecureStore
       onRehydrateStorage: () => {
         return async (state) => {
           if (state) {
             const key = await loadApiKey();
             (state as any).apiKey = key;
             (state as any).isConfigured = key.trim().length > 0;
+            (state as any).isHydrated = true;
           }
         };
       },
