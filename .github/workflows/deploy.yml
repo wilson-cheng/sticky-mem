@@ -36,6 +36,14 @@ jobs:
       - name: Build web
         run: npx expo export -p web --output-dir dist
 
+      - name: Fix import.meta — add type="module" to script tag
+        run: |
+          echo "Before fix:"
+          grep -o '<script src=.*defer>' dist/index.html
+          sed -i 's|<script src="\(.*\)" defer>|<script src="\1" type="module" defer>|' dist/index.html
+          echo "After fix:"
+          grep -o '<script src=.*defer>' dist/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
