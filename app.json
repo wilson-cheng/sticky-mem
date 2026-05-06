@@ -26,6 +26,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "experiments": {
+      "baseUrl": "/sticky-mem"
+    },
     "plugins": [
       "expo-router",
       "expo-sqlite"
