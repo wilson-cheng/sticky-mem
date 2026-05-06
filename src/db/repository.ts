@@ -50,6 +50,11 @@ export class Repository {
     };
   }
 
+  async deleteQuestionsByContentId(contentId: string): Promise<void> {
+    await this.db.run('DELETE FROM cards WHERE question_id IN (SELECT id FROM questions WHERE content_id = ?)', [contentId]);
+    await this.db.run('DELETE FROM questions WHERE content_id = ?', [contentId]);
+  }
+
   async deleteContent(id: string): Promise<void> {
     await this.db.run('DELETE FROM contents WHERE id = ?', [id]);
   }
@@ -210,7 +215,7 @@ export class Repository {
     questions: { type: string; question: string; correctAnswer: string; options?: string[]; explanation?: string }[];
   }): Promise<void> {
     const now = Date.now();
-    const contentId = crypto.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2)}`;
+    const contentId = `${now}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2, 5)}`;
 
     // Save content
     await this.insertContent({
@@ -224,7 +229,7 @@ export class Repository {
 
     // Save each question + initial card
     for (const q of params.questions) {
-      const questionId = crypto.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2)}`;
+      const questionId = `${now}-${Math.random().toString(36).slice(6)}`;
       await this.insertQuestion({
         id: questionId,
         contentId,

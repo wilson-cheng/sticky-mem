@@ -30,6 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# generated images (qr codes, test screenshots)
+*.png
+
 # local env files
 .env*.local
 

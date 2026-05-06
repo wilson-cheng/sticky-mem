@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
 import { useApiClient } from '../src/hooks/useApiClient';
 import { digestContent } from '../src/llm/digest';
 import { generateQuestions } from '../src/llm/questions';
 import { initDatabase } from '../src/hooks/useDatabase';
+import { useSettingsStore } from '../src/store/settings';
 
 export default function AddContentScreen() {
   const router = useRouter();
   const apiClient = useApiClient();
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState<{ title: string; count: number } | null>(null);
+  const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
 
   const handleSubmit = async (input: string) => {
     if (!apiClient) {
@@ -26,7 +28,7 @@ export default function AddContentScreen() {
       const digest = await digestContent(apiClient, input);
 
       // Step 2: Generate questions
-      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title);
+      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title, questionsPerContent);
 
       // Step 3: Save to database
       const repo = await initDatabase();
@@ -84,21 +86,27 @@ export default function AddContentScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Add Content</Text>
-      <Text style={styles.subtitle}>
-        Paste text or a URL, and StickyMem will digest it into spaced-repetition questions.
-      </Text>
-      <AddContentForm onSubmit={handleSubmit} isProcessing={isProcessing} />
-      {isProcessing && (
-        <View style={styles.processingBox}>
-          <Text style={styles.processingText}>Processing content...</Text>
-          <Text style={styles.processingDetail}>
-            Your DeepSeek key is being used to generate recall questions. This may take a few seconds.
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>Add Content</Text>
+        <Text style={styles.subtitle}>
+          Paste text or a URL, and StickyMem will digest it into spaced-repetition questions.
+        </Text>
+        <AddContentForm onSubmit={handleSubmit} isProcessing={isProcessing} />
+        {isProcessing && (
+          <View style={styles.processingBox}>
+            <Text style={styles.processingText}>Processing content...</Text>
+            <Text style={styles.processingDetail}>
+              Your DeepSeek key is being used to generate {questionsPerContent} recall questions. This may take a few seconds.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

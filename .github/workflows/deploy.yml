@@ -21,11 +21,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -37,12 +35,7 @@ jobs:
         run: npx expo export -p web --output-dir dist
 
       - name: Fix import.meta — add type="module" to script tag
-        run: |
-          echo "Before fix:"
-          grep -o '<script src=.*defer>' dist/index.html
-          sed -i 's|<script src="\(.*\)" defer>|<script src="\1" type="module" defer>|' dist/index.html
-          echo "After fix:"
-          grep -o '<script src=.*defer>' dist/index.html
+        run: sed -i 's|<script src=|<script type="module" src=|' dist/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

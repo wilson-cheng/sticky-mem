@@ -9,7 +9,7 @@ export interface QuestionInput {
   explanation?: string;
 }
 
-const QUESTIONS_SYSTEM_PROMPT = `You are a quiz generator. Given key concepts and a topic, generate 3-6 questions.
+const QUESTIONS_SYSTEM_PROMPT = (count: number) => `You are a quiz generator. Given key concepts and a topic, generate exactly ${count} questions.
 
 Output a JSON array of question objects. Each object must have:
 - "type": "multiple_choice" or "short_answer"
@@ -19,6 +19,7 @@ Output a JSON array of question objects. Each object must have:
 - "explanation": Brief explanation of the correct answer
 
 Rules:
+- Generate EXACTLY ${count} questions
 - Mix question types (at least 1 of each)
 - Questions should test understanding, not trivia
 - Wrong options should be plausible
@@ -28,13 +29,14 @@ export async function generateQuestions(
   client: DeepseekClient,
   keyConcepts: string[],
   topic: string,
+  count: number = 6,
 ): Promise<QuestionInput[]> {
   const userMessage = `Topic: ${topic}\n\nKey Concepts:\n${keyConcepts.map((c, i) => `${i + 1}. ${c}`).join('\n')}`;
 
   const response = await client.chat(
     [{ role: 'user', content: userMessage }],
     {
-      system: QUESTIONS_SYSTEM_PROMPT,
+      system: QUESTIONS_SYSTEM_PROMPT(count),
       temperature: 0.5,
       maxTokens: 4096,
     },

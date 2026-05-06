@@ -1,12 +1,15 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useSchedule } from '../src/hooks/useSchedule';
 import { useSettingsStore } from '../src/store/settings';
+import StickyMemLogo from '../src/components/StickyMemLogo';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const repo = useDatabase();
   const { dueCount, totalQuestions, loading, refresh } = useSchedule(repo);
   const isConfigured = useSettingsStore((s) => s.isConfigured);
@@ -18,11 +21,14 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.appName}>StickyMem</Text>
+          <View style={styles.headerLeft}>
+            <StickyMemLogo size={36} />
+            <Text style={styles.appName}>StickyMem</Text>
+          </View>
           <TouchableOpacity onPress={() => router.push('/settings')}>
             <Text style={styles.settingsIcon}>⚙️</Text>
           </TouchableOpacity>
@@ -41,9 +47,7 @@ export default function HomeScreen() {
             <>
               <Text style={styles.reviewCardCount}>{dueCount}</Text>
               <Text style={styles.reviewCardLabel}>questions due</Text>
-              <TouchableOpacity style={styles.startButton}>
-                <Text style={styles.startButtonText}>Start Review</Text>
-              </TouchableOpacity>
+              <Text style={styles.startButton}>Start Review</Text>
             </>
           ) : totalQuestions > 0 ? (
             <>
@@ -101,8 +105,9 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 24, marginTop: 8,
+    marginBottom: 24,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   appName: { fontSize: 28, fontWeight: '800', color: '#333' },
   settingsIcon: { fontSize: 24 },
   reviewCard: {
@@ -116,8 +121,8 @@ const styles = StyleSheet.create({
   reviewCardLabel: { fontSize: 14, color: '#888', marginTop: 4, marginBottom: 16 },
   startButton: {
     backgroundColor: '#4A90D9', borderRadius: 12, paddingHorizontal: 32, paddingVertical: 12,
+    color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', overflow: 'hidden',
   },
-  startButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   statBox: {
     flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center',

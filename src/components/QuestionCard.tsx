@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import type { Question } from '../types';
 
@@ -11,25 +11,37 @@ export default function QuestionCard({ question, onAnswer }: Props) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [shortAnswer, setShortAnswer] = useState('');
   const [hasAnswered, setHasAnswered] = useState(false);
+  const nextCalledRef = useRef(false);
+
+  const isCorrect = question.type === 'multiple_choice'
+    ? selectedOption === question.correctAnswer
+    : shortAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
+
+  // Auto-advance after 3s on correct answer
+  useEffect(() => {
+    if (hasAnswered && isCorrect && !nextCalledRef.current) {
+      nextCalledRef.current = true;
+      const timer = setTimeout(() => onAnswer(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasAnswered, isCorrect, onAnswer]);
 
   const handleMultipleChoice = (option: string) => {
     if (hasAnswered) return;
     setSelectedOption(option);
     setHasAnswered(true);
-    const correct = option === question.correctAnswer;
-    setTimeout(() => onAnswer(correct), 1000);
   };
 
   const handleShortAnswer = () => {
     if (hasAnswered || !shortAnswer.trim()) return;
     setHasAnswered(true);
-    const correct = shortAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
-    setTimeout(() => onAnswer(correct), 1500);
   };
 
-  const isCorrect = question.type === 'multiple_choice'
-    ? selectedOption === question.correctAnswer
-    : shortAnswer.trim().toLowerCase() === question.correctAnswer.toLowerCase();
+  const handleNext = () => {
+    if (nextCalledRef.current) return;
+    nextCalledRef.current = true;
+    onAnswer(isCorrect);
+  };
 
   return (
     <View style={styles.card}>
@@ -94,6 +106,14 @@ export default function QuestionCard({ question, onAnswer }: Props) {
           )}
         </View>
       )}
+
+      {hasAnswered && (
+        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+          <Text style={styles.nextButtonText}>
+            {isCorrect ? 'Next →' : 'Next →'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -133,4 +153,9 @@ const styles = StyleSheet.create({
   explanationTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
   explanationText: { fontSize: 14, color: '#555', lineHeight: 20 },
   correctAnswer: { fontSize: 14, color: '#C62828', fontWeight: '600', marginTop: 8 },
+  nextButton: {
+    marginTop: 16, backgroundColor: '#4A90D9', borderRadius: 10,
+    padding: 14, alignItems: 'center',
+  },
+  nextButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

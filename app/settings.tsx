@@ -6,7 +6,7 @@ import { useSettingsStore } from '../src/store/settings';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-  const { apiKey, setApiKey, isConfigured, dailyReviewTarget, setDailyReviewTarget } = useSettingsStore();
+  const { apiKey, setApiKey, isConfigured, dailyReviewTarget, setDailyReviewTarget, questionsPerContent, setQuestionsPerContent } = useSettingsStore();
   const [localKey, setLocalKey] = useState(apiKey);
   const router = useRouter();
 
@@ -64,6 +64,30 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <Text style={styles.label}>Questions per Content</Text>
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={styles.numberButton}
+          onPress={() => setQuestionsPerContent(Math.max(3, questionsPerContent - 1))}
+        >
+          <Text style={styles.numberButtonText}>−</Text>
+        </TouchableOpacity>
+        <Text style={styles.numberValue}>{questionsPerContent}</Text>
+        <TouchableOpacity
+          style={styles.numberButton}
+          onPress={() => setQuestionsPerContent(Math.min(20, questionsPerContent + 1))}
+        >
+          <Text style={styles.numberButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={styles.manageBtn}
+        onPress={() => router.push('/manage')}
+      >
+        <Text style={styles.manageBtnText}>📂 Manage Content</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={[styles.saveButton, !localKey.trim() && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -101,6 +125,11 @@ const styles = StyleSheet.create({
   },
   numberButtonText: { fontSize: 24, color: '#333', fontWeight: '600' },
   numberValue: { fontSize: 28, fontWeight: '700', color: '#333', minWidth: 40, textAlign: 'center' },
+  manageBtn: {
+    backgroundColor: '#F0EDFF', borderRadius: 10, padding: 14, alignItems: 'center',
+    marginTop: 20, borderWidth: 1, borderColor: '#D5D0FF',
+  },
+  manageBtnText: { color: '#6C63FF', fontSize: 15, fontWeight: '600' },
   saveButton: {
     backgroundColor: '#4A90D9', borderRadius: 10, padding: 16,
     alignItems: 'center', marginTop: 32,
