@@ -26,11 +26,11 @@ export default function AddContentScreen() {
 
     try {
       // Step 1: Digest the content
-      const digest = await digestContent(apiClient, input, 'sample source');
+      const digest = await digestContent(apiClient, input);
       contentTitle = digest.title;
 
       // Step 2: Generate questions
-      const questions = await generateQuestions(apiClient, digest);
+      const questions = await generateQuestions(apiClient, digest.keyConcepts, digest.title);
 
       // Step 3: Save to database
       const repo = await initDatabase();
