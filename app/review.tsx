@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QuestionCard from '../src/components/QuestionCard';
@@ -258,7 +258,7 @@ export default function ReviewScreen() {
     const countLabel = stats.total === 1 ? 'concept' : 'concepts';
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <Text style={styles.doneCelebration}>🧠</Text>
+        <Image source={require('../assets/icon.png')} style={styles.doneLogo} />
         <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.sessionTitle')}</Text>
         <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>
           {t('review.sessionSubtitle', { count: stats.total, count_label: countLabel })}
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   progressContainer: { paddingHorizontal: 16, marginBottom: 8 },
   progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#6C63FF', borderRadius: 3 },
-  doneCelebration: { fontSize: 72, marginBottom: 12 },
+  doneLogo: { width: 100, height: 100, borderRadius: 20, marginBottom: 16 },
   doneTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
   doneSubtitle: { fontSize: 15, marginBottom: 24, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
   doneStatsRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
