@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import Alert from '@blazejkustra/react-native-alert';
+import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';

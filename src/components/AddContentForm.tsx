@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Alert from '@blazejkustra/react-native-alert';
+import Alert from '../utils/alertWrapper';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface Props {

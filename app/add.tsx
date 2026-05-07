@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Alert from '@blazejkustra/react-native-alert';
+import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Keyboard, Animated,

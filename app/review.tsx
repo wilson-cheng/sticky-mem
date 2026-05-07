@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import Alert from '@blazejkustra/react-native-alert';
+import Alert from '../src/utils/alertWrapper';
 import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

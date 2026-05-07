@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import Alert from '@blazejkustra/react-native-alert';
+import Alert from '../utils/alertWrapper';
 import {
   View,
   Text,
