@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
+import Alert from '@blazejkustra/react-native-alert';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch,
 } from 'react-native';
 import { useTranslation } from '../src/i18n/useTranslation';
 import { useSettingsStore } from '../src/store/settings';

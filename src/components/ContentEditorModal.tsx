@@ -5,13 +5,13 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
+import Alert from '@blazejkustra/react-native-alert';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';

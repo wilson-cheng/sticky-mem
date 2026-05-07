@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
+import Alert from '@blazejkustra/react-native-alert';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { initDatabase } from '../src/hooks/useDatabase';

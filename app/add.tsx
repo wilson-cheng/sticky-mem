@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Alert from '@blazejkustra/react-native-alert';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Keyboard, Animated,
+  KeyboardAvoidingView, Platform, Keyboard, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';

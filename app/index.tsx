@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from 'react-native';
+import Alert from '@blazejkustra/react-native-alert';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Animated, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect, Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../src/hooks/useDatabase';

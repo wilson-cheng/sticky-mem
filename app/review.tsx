@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Image, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Animated } from 'react-native';
+import Alert from '@blazejkustra/react-native-alert';
+import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QuestionCard from '../src/components/QuestionCard';
