@@ -27,6 +27,7 @@ export default function RootLayout() {
         <Stack.Screen name="review" options={{ title: 'Review', headerShown: false }} />
         <Stack.Screen name="progress" options={{ title: 'Progress' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="manage" options={{ title: 'Manage' }} />
       </Stack>
     </View>
   );
