@@ -27,6 +27,7 @@ export default function HomeScreen() {
 
   // Determine if the daily target has been met
   const targetMet = dailyReviewTarget > 0 && todayReviewed >= dailyReviewTarget;
+  const displayDueCount = targetMet ? 0 : dueCount;
   const buttonLabel =
     todayReviewed === 0
       ? t('home.startReview')
@@ -60,7 +61,7 @@ export default function HomeScreen() {
           <Text style={[styles.reviewCardTitle, { color: c.textSecondary }]}>{t('home.todayReview')}</Text>
           {loading ? (
             <Text style={[styles.reviewCardCount, { color: c.blue }]}>...</Text>
-          ) : dueCount > 0 ? (
+          ) : displayDueCount > 0 ? (
             <>
               <Text style={[styles.reviewCardCount, { color: c.blue }]}>{dueCount}</Text>
               <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
@@ -77,14 +78,19 @@ export default function HomeScreen() {
             <>
               <Text style={[styles.reviewCardCount, { color: c.blue }]}>0</Text>
               <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
-                {todayReviewed > 0
+                {targetMet
                   ? t('home.allDone')
-                  : t('home.noneDue')}
+                  : todayReviewed > 0
+                    ? t('home.allDone')
+                    : t('home.noneDue')}
               </Text>
               {todayReviewed > 0 && (
                 <Text style={styles.progressLabel}>
                   {todayReviewed} {t('home.reviewedToday')} ✅
                 </Text>
+              )}
+              {targetMet && (
+                <Text style={[styles.startButton, { backgroundColor: c.blue }]}>{buttonLabel}</Text>
               )}
             </>
           ) : (
@@ -102,7 +108,7 @@ export default function HomeScreen() {
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.totalCards')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={[styles.statNumber, { color: c.textPrimary }]}>{dueCount}</Text>
+            <Text style={[styles.statNumber, { color: c.textPrimary }]}>{displayDueCount}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.readyToReview')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
