@@ -50,7 +50,10 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (!isLast) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      const offset = nextIdx * width;
+      flatListRef.current?.scrollToOffset({ offset, animated: true });
     }
   };
 
