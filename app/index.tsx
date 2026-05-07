@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   logoEmoji: { fontSize: 20 },
-  logoImage: { width: 36, height: 36 },
+  logoImage: { width: 36, height: 36, borderRadius: 8 },
   appName: { fontSize: 28, fontWeight: '800' },
   settingsIcon: { fontSize: 24 },
   loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
