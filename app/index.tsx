@@ -102,9 +102,7 @@ export default function HomeScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: c.bg }]}>
         <View style={[styles.header, { paddingTop: 0 }]}>
           <View style={styles.headerLeft}>
-            <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-            </View>
+            <Image source={require('../assets/icon.png')} style={styles.logoImage} />
             <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
           </View>
         </View>
@@ -123,9 +121,7 @@ export default function HomeScreen() {
           {/* Header */}
           <View style={[styles.header, { paddingTop: insets.top }]}>
             <View style={styles.headerLeft}>
-              <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-                <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-              </View>
+              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
               <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/settings')}>
@@ -236,9 +232,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-            </View>
+            <Image source={require('../assets/icon.png')} style={styles.logoImage} />
             <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/settings')}>
@@ -419,7 +413,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   logoEmoji: { fontSize: 20 },
-  logoImage: { width: 32, height: 32, borderRadius: 6 },
+  logoImage: { width: 36, height: 36 },
   appName: { fontSize: 28, fontWeight: '800' },
   settingsIcon: { fontSize: 24 },
   loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
