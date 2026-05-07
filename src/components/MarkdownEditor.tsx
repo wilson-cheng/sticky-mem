@@ -21,16 +21,23 @@ interface Props {
   editable?: boolean;
 }
 
-// Lazy-loaded converters
-let turndown: any = null;
+// Module-level turndown instance — pre-loaded on first import
+let turndownPromise: Promise<any> | null = null;
+let turndownInstance: any = null;
 
-async function getTurndown() {
-  if (!turndown) {
-    const Turndown = await import('turndown');
-    turndown = Turndown.default || Turndown;
+function ensureTurndown() {
+  if (!turndownPromise) {
+    turndownPromise = (async () => {
+      const Turndown = await import('turndown');
+      const td = Turndown.default || Turndown;
+      turndownInstance = new td({ headingStyle: 'atx', bulletListMarker: '-' });
+    })();
   }
-  return new turndown({ headingStyle: 'atx', bulletListMarker: '-' });
+  return turndownPromise;
 }
+
+// Kick off pre-load immediately
+ensureTurndown();
 
 function markdownToHtml(md: string): string {
   if (!md) return '<p></p>';
@@ -76,7 +83,6 @@ export default React.memo(function MarkdownEditor({
   const c = useColors();
   const [editorReady, setEditorReady] = useState(false);
   const [contentSet, setContentSet] = useState(false);
-  const changeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Convert markdown to HTML — runs once (mount only) due to React.memo + never-update.
   // Content switching is handled by key prop in ContentEditorModal.
@@ -94,35 +100,27 @@ export default React.memo(function MarkdownEditor({
     }
   }, [editorReady, contentSet, html]);
 
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (changeTimerRef.current) clearTimeout(changeTimerRef.current);
-    };
-  }, []);
-
   const handleEditorInit = useCallback(() => {
     setEditorReady(true);
   }, []);
 
-  // Debounce onChange to prevent cursor jump — iframe postMessage + async conversion
-  // resets selection on every state update. Batching keystrokes via 300ms debounce
-  // reduces state update frequency while keeping "Save" button reactivity.
+  // onChange fires immediately — React.memo(() => true) prevents re-render
+  // from parent state updates, so cursor position is preserved.
+  // Turndown is pre-loaded so the conversion is synchronous after first keystroke.
   const handleChange = useCallback(
     (rawHtml: string) => {
-      if (changeTimerRef.current) {
-        clearTimeout(changeTimerRef.current);
-      }
-      changeTimerRef.current = setTimeout(async () => {
+      const td = turndownInstance;
+      if (td) {
         try {
-          const td = await getTurndown();
           const md = td.turndown(rawHtml);
           onChange(md);
         } catch {
-          // If turndown fails, just pass the raw HTML
           onChange(rawHtml);
         }
-      }, 300);
+      } else {
+        // Fallback: pass raw HTML if turndown isn't loaded yet
+        onChange(rawHtml);
+      }
     },
     [onChange],
   );
@@ -165,8 +163,14 @@ export default React.memo(function MarkdownEditor({
           />
         </View>
       )}
-      {/* Editor fills remaining space */}
-      <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD' }]}>
+      {/* Editor fills remaining space — overflow-y:auto only on web (native handled by the editor webview) */}
+      <View
+        style={[
+          styles.editorWrapper,
+          { borderColor: c.border || '#DDD' },
+          Platform.OS === 'web' && { overflowY: 'auto' as const },
+        ]}
+      >
         <RichEditor
           ref={richText}
           onChange={handleChange}
@@ -212,10 +216,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
-    ...Platform.select({
-      web: { overflowY: 'auto' as const },
-      default: { overflow: 'hidden' as const },
-    }),
   },
   editor: {
     flex: 1,
