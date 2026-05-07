@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { useColors } from '../src/theme/useColors';
+import { AlertThemeProvider } from '../src/components/AlertThemeProvider';
 
 export default function RootLayout() {
   const c = useColors();
@@ -17,6 +18,7 @@ export default function RootLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <AlertThemeProvider />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />
