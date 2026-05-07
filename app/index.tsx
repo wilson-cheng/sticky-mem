@@ -255,50 +255,73 @@ export default function HomeScreen() {
             }) }],
           }}
         >
-          <TouchableOpacity
-            style={[styles.reviewCard, { backgroundColor: c.cardBg }]}
-            onPress={() => router.push('/review')}
-            disabled={displayDueCount === 0 && !loading}
-          >
-          <Text style={[styles.reviewCardTitle, { color: c.textSecondary }]}>
-            {t('home.todayReview')} {getAccuracyEmoji()}
-          </Text>
-          {loading ? (
-            <Text style={[styles.reviewCardCount, { color: c.blue }]}>...</Text>
-          ) : displayDueCount > 0 ? (
-            <>
-              <Text style={[styles.reviewCardCount, { color: c.blue }]}>{dueCount}</Text>
-              <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
-                {dueCount === 1 ? t('home.questionReady') : t('home.questionsReady')}
-              </Text>
-              {todayReviewed > 0 && (
-                <Text style={[styles.progressLabel, { color: c.textSecondary }]}>
-                  {t('home.onARoll')}{'\n'}{t('home.streakDays', { count: todayReviewed })}
+          <View style={[styles.reviewCard, { backgroundColor: c.cardBg }]}>
+            <Text style={[styles.reviewCardTitle, { color: c.textSecondary }]}>
+              ⚡ {t('home.todayReview')} {getAccuracyEmoji()}
+            </Text>
+
+            {loading ? (
+              <ActivityIndicator size="large" color={c.blue} style={{ marginVertical: 24 }} />
+            ) : displayDueCount > 0 ? (
+              <>
+                {/* Due count in accent circle */}
+                <View style={[styles.countCircle, { backgroundColor: c.accent + '18' }]}>
+                  <Text style={[styles.countNumber, { color: c.accent }]}>{dueCount}</Text>
+                </View>
+                <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
+                  {dueCount === 1 ? t('home.questionReady') : t('home.questionsReady')}
                 </Text>
-              )}
-              <Text style={[styles.startButton, { backgroundColor: c.blue }]}>{buttonLabel}</Text>
-            </>
-          ) : totalQuestions > 0 ? (
-            <>
-              <Text style={[styles.reviewCardCount, { color: c.blue }]}>0</Text>
-              <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
-                {targetMet
-                  ? t('home.allDone')
-                  : todayReviewed > 0
-                    ? t('home.allDone')
-                    : t('home.noneDue')}
-              </Text>
-              {todayReviewed > 0 && (
-                <Text style={[styles.progressLabel, { color: c.textSecondary }]}>
-                  {t('home.streakDays', { count: todayReviewed })}
+
+                {/* Daily target progress bar */}
+                {dailyReviewTarget > 0 && todayReviewed > 0 && (
+                  <View style={styles.progressSection}>
+                    <View style={[styles.progressBarBg, { backgroundColor: c.border }]}>
+                      <View style={[
+                        styles.progressBarFill,
+                        { backgroundColor: c.accent, width: `${Math.min(Math.round((todayReviewed / dailyReviewTarget) * 100), 100)}%` },
+                      ]} />
+                    </View>
+                    <Text style={[styles.progressText, { color: c.textSecondary }]}>
+                      {todayReviewed} / {dailyReviewTarget} today
+                    </Text>
+                  </View>
+                )}
+
+                {/* Start Review Button */}
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: c.blue }]}
+                  onPress={() => router.push('/review')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
+                </TouchableOpacity>
+              </>
+            ) : totalQuestions > 0 ? (
+              <>
+                {/* All done — celebration */}
+                <View style={[styles.countCircle, { backgroundColor: c.successBg }]}>
+                  <Text style={styles.doneEmoji}>🎉</Text>
+                </View>
+                <Text style={[styles.reviewCardLabel, { color: c.textSecondary, fontSize: 16, fontWeight: '600', marginTop: 12 }]}>
+                  {t('home.allDone')}
                 </Text>
-              )}
-              {targetMet && (
-                <Text style={[styles.startButton, { backgroundColor: c.blue }]}>{buttonLabel}</Text>
-              )}
-            </>
-          ) : null}
-        </TouchableOpacity>
+                {todayReviewed > 0 && (
+                  <Text style={[styles.streakInlineLabel, { color: c.textSecondary }]}>
+                    {t('home.streakDays', { count: todayReviewed })}
+                  </Text>
+                )}
+                {targetMet && (
+                  <TouchableOpacity
+                    style={[styles.primaryButton, { backgroundColor: c.accent }]}
+                    onPress={() => router.push('/review')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : null}
+          </View>
         </Animated.View>
 
         {/* Stats Row */}
@@ -312,19 +335,41 @@ export default function HomeScreen() {
         >
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+            <Text style={styles.statIcon}>📚</Text>
             <Text style={[styles.statNumber, { color: c.textPrimary }]}>{totalQuestions}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.totalCards')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={[styles.statNumber, { color: c.textPrimary }]}>{displayDueCount}</Text>
+            <Text style={styles.statIcon}>⏰</Text>
+            <Text style={[styles.statNumber, { color: displayDueCount > 0 ? c.blue : c.textPrimary }]}>{displayDueCount}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.readyToReview')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+            <Text style={styles.statIcon}>✅</Text>
             <Text style={[styles.statNumber, { color: c.textPrimary }]}>{todayReviewed}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.reviewedTodayLabel')}</Text>
           </View>
         </View>
         </Animated.View>
+
+        {/* Streak / Motivation Card */}
+        {todayReviewed > 0 && (
+          <Animated.View
+            style={[styles.motivationCard, { backgroundColor: c.cardBg, opacity: statsAnim }]}
+          >
+            <Text style={styles.motivationEmoji}>🔥</Text>
+            <View style={styles.motivationTextSection}>
+              <Text style={[styles.motivationLabel, { color: c.textPrimary }]}>
+                {t('home.streakDays', { count: todayReviewed })}
+              </Text>
+              <Text style={[styles.motivationSubtext, { color: c.textSecondary }]}>
+                {targetMet
+                  ? t('home.onARoll')
+                  : `Keep going — ${dailyReviewTarget - todayReviewed} more`}
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* API Key Warning — only show after hydration is complete */}
         {!loading && isHydrated && !isConfigured && (
@@ -347,10 +392,12 @@ export default function HomeScreen() {
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: c.cardBg }]} onPress={() => router.push('/add')}>
             <Text style={styles.actionIcon}>📝</Text>
             <Text style={[styles.actionText, { color: c.textSecondary }]}>{t('home.addContent')}</Text>
+            <Text style={[styles.actionHint, { color: c.textSecondary }]}>Paste text or link</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: c.cardBg }]} onPress={() => router.push('/manage')}>
             <Text style={styles.actionIcon}>📂</Text>
             <Text style={[styles.actionText, { color: c.textSecondary }]}>{t('home.manage')}</Text>
+            <Text style={[styles.actionHint, { color: c.textSecondary }]}>View all content</Text>
           </TouchableOpacity>
         </View>
         </Animated.View>
@@ -441,36 +488,71 @@ const styles = StyleSheet.create({
   tryDemoText: { fontSize: 15, fontWeight: '500' },
   // ─── Normal State ─── //
   reviewCard: {
-    borderRadius: 20, padding: 24,
+    borderRadius: 20, padding: 28,
     alignItems: 'center', marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
   },
-  reviewCardTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  reviewCardCount: { fontSize: 64, fontWeight: '800' },
-  reviewCardLabel: { fontSize: 14, marginTop: 4, marginBottom: 4 },
-  progressLabel: { fontSize: 13, color: '#4CAF50', marginBottom: 12, fontWeight: '500' },
-  startButton: {
-    borderRadius: 12, paddingHorizontal: 32, paddingVertical: 12,
-    color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', overflow: 'hidden',
+  reviewCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16, letterSpacing: 0.3 },
+  reviewCardLabel: { fontSize: 14, marginTop: 6, marginBottom: 8 },
+  countCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
   },
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  countNumber: { fontSize: 44, fontWeight: '800' },
+  doneEmoji: { fontSize: 44 },
+  progressSection: {
+    width: '100%', marginTop: 12, marginBottom: 16,
+    alignItems: 'center',
+  },
+  progressBarBg: {
+    width: '100%', height: 8, borderRadius: 4,
+    overflow: 'hidden', marginBottom: 6,
+  },
+  progressBarFill: { height: '100%', borderRadius: 4 },
+  progressText: { fontSize: 12, fontWeight: '500' },
+  streakInlineLabel: { fontSize: 13, marginTop: 8, fontWeight: '500' },
+  primaryButton: {
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40,
+    alignItems: 'center', width: '100%', marginTop: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+  },
+  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   statBox: {
     flex: 1, borderRadius: 14, padding: 16, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  statNumber: { fontSize: 32, fontWeight: '800' },
-  statLabel: { fontSize: 12, marginTop: 4 },
+  statIcon: { fontSize: 20, marginBottom: 4 },
+  statNumber: { fontSize: 28, fontWeight: '800' },
+  statLabel: { fontSize: 11, marginTop: 2, fontWeight: '500' },
+  motivationCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, padding: 16, marginBottom: 16, gap: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  motivationEmoji: { fontSize: 28 },
+  motivationTextSection: { flex: 1 },
+  motivationLabel: { fontSize: 15, fontWeight: '700' },
+  motivationSubtext: { fontSize: 12, marginTop: 2 },
   warningCard: {
     flexDirection: 'row', borderRadius: 12, padding: 14,
-    alignItems: 'center', gap: 10, marginBottom: 20,
+    alignItems: 'center', gap: 10, marginBottom: 16,
   },
   warningIcon: { fontSize: 20 },
   warningText: { flex: 1, fontSize: 13, color: '#E65100', lineHeight: 18 },
-  actionsRow: { flexDirection: 'row', gap: 12 },
+  actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   actionButton: {
-    flex: 1, borderRadius: 14, padding: 20,
-    alignItems: 'center', gap: 8,
+    flex: 1, borderRadius: 16, padding: 20,
+    alignItems: 'center', gap: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  actionIcon: { fontSize: 28 },
-  actionText: { fontSize: 14, fontWeight: '500' },
+  actionIcon: { fontSize: 32 },
+  actionText: { fontSize: 15, fontWeight: '600' },
+  actionHint: { fontSize: 11, marginTop: 1, opacity: 0.7 },
 });
