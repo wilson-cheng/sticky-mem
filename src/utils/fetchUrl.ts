@@ -1,21 +1,70 @@
 /**
  * Fetch URL content and convert to Markdown.
- * Uses Jina Reader API (free, no auth) as primary method.
- * Falls back to direct fetch + turndown if that fails.
+ *
+ * For browser (web app), CORS is the main challenge:
+ * 1. Try Jina Reader API directly (works on native/mobile, may fail CORS on web)
+ * 2. Try Jina Reader through allorigins CORS proxy (works on web)
+ * 3. If all fail, throw a clear error
  */
 
-import TurndownService from 'turndown';
+type FetchFn = () => Promise<string>;
 
-const turndownService = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-  bulletListMarker: '-',
-});
+/**
+ * Try Jina Reader API directly (no CORS proxy).
+ * Works on native mobile; may fail in browser due to missing CORS headers.
+ */
+const tryJinaDirect: FetchFn = async (url: string) => {
+  const jinaUrl = `https://r.jina.ai/${encodeURI(url)}`;
+  const response = await fetch(jinaUrl, {
+    headers: {
+      Accept: 'text/plain, text/markdown',
+      'X-Return-Format': 'markdown',
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error(`Jina returned HTTP ${response.status}`);
+  const markdown = await response.text();
+  if (!markdown || markdown.length < 50) throw new Error('Jina returned empty content');
+  return markdown;
+};
+
+/**
+ * Try Jina Reader through allorigins CORS proxy.
+ * allorigins.win wraps the URL, adds CORS headers, and returns JSON.
+ * Response: { contents: string, status: { ... } }
+ */
+const tryJinaViaProxy: FetchFn = async (url: string) => {
+  const jinaUrl = `https://r.jina.ai/${encodeURI(url)}`;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(jinaUrl)}`;
+  const response = await fetch(proxyUrl, {
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok) throw new Error(`CORS proxy returned HTTP ${response.status}`);
+  const data = await response.json();
+  if (!data?.contents || typeof data.contents !== 'string') {
+    throw new Error('CORS proxy returned unexpected response');
+  }
+  return data.contents as string;
+};
+
+const tryDirectFetchViaProxy: FetchFn = async (url: string) => {
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const response = await fetch(proxyUrl, {
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!response.ok) throw new Error(`Direct proxy returned HTTP ${response.status}`);
+  const data = await response.json();
+  if (!data?.contents || typeof data.contents !== 'string') {
+    throw new Error('Direct proxy returned unexpected response');
+  }
+
+  // Return raw content scraped by allorigins
+  return data.contents as string;
+};
 
 /**
  * Fetch a URL and return its content as Markdown.
- * Primary: Jina Reader API (https://r.jina.ai)
- * Fallback: direct CORS fetch + turndown HTML→Markdown conversion
+ * Uses multiple strategies to handle CORS restrictions in the browser.
  */
 export async function fetchUrlAsMarkdown(url: string): Promise<string> {
   // Normalize URL
@@ -23,47 +72,33 @@ export async function fetchUrlAsMarkdown(url: string): Promise<string> {
     ? url
     : `https://${url}`;
 
-  // Try Jina Reader API first
-  try {
-    const jinaUrl = `https://r.jina.ai/${encodeURI(normalizedUrl)}`;
-    const response = await fetch(jinaUrl, {
-      headers: {
-        'Accept': 'text/plain, text/markdown',
-        'X-Return-Format': 'markdown',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
+  const lastError: string[] = [];
 
-    if (response.ok) {
-      const markdown = await response.text();
-      if (markdown && markdown.length > 50) {
-        return markdown;
-      }
-    }
-  } catch (e) {
-    console.warn('[fetchUrl] Jina Reader failed, trying fallback:', e);
+  // Strategy 1: Jina Reader directly (fastest, works on native)
+  try {
+    return await tryJinaDirect(normalizedUrl);
+  } catch (e: any) {
+    lastError.push(`Jina direct: ${e.message || e}`);
   }
 
-  // Fallback: try direct fetch (might fail due to CORS)
+  // Strategy 2: Jina Reader through CORS proxy (works on web)
   try {
-    const response = await fetch(normalizedUrl, {
-      signal: AbortSignal.timeout(10000),
-    });
-    if (response.ok) {
-      const html = await response.text();
-      const markdown = turndownService.turndown(html);
-      if (markdown && markdown.length > 20) {
-        return markdown;
-      }
-    }
-  } catch (e) {
-    console.warn('[fetchUrl] Direct fetch failed:', e);
+    return await tryJinaViaProxy(normalizedUrl);
+  } catch (e: any) {
+    lastError.push(`Jina via proxy: ${e.message || e}`);
   }
 
-  // If we got here, both methods failed
+  // Strategy 3: Direct fetch through CORS proxy (last resort)
+  try {
+    return await tryDirectFetchViaProxy(normalizedUrl);
+  } catch (e: any) {
+    lastError.push(`Direct via proxy: ${e.message || e}`);
+  }
+
+  // All strategies failed — throw descriptive error
   throw new Error(
-    `Could not fetch content from "${url}".\n\n` +
-    'Make sure the URL is correct and publicly accessible.\n' +
-    'You can paste the content manually using the Text tab instead.'
+    `Could not fetch content from "${normalizedUrl}".\n\n` +
+    `Reasons:\n${lastError.map((s) => `• ${s}`).join('\n')}\n\n` +
+    'Try pasting the content manually using Paste Text instead.'
   );
 }

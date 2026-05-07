@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 
 interface Props {
   onSubmit: (input: string) => Promise<void>;
@@ -23,8 +23,11 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
         setInput('');
         await onSubmit(markdown);
       } catch (e: any) {
-        // Error is thrown from fetchUrlAsMarkdown, will be caught by parent
-        throw e;
+        console.error('[AddContentForm] URL fetch failed:', e);
+        Alert.alert(
+          'Failed to Fetch URL',
+          e.message || 'An unexpected error occurred while fetching the URL.\n\nPlease check the URL and try again, or paste the content manually.',
+        );
       } finally {
         setFetchingUrl(false);
       }
