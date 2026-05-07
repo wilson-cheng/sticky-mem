@@ -20,6 +20,7 @@ export default function RootLayout() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="add" options={{ title: 'Add Content', presentation: 'modal' }} />
         <Stack.Screen name="review" options={{ title: 'Review', headerShown: false }} />
         <Stack.Screen name="progress" options={{ title: 'Progress' }} />

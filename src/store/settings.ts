@@ -22,6 +22,8 @@ interface SettingsState {
   setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => void;
   multipleChoiceOnly: boolean;
   setMultipleChoiceOnly: (v: boolean) => void;
+  hasSeenOnboarding: boolean;
+  setHasSeenOnboarding: (v: boolean) => void;
 }
 
 // ─── API Key storage (web: localStorage, native: expo-secure-store) ─── //
@@ -92,6 +94,8 @@ export const useSettingsStore = create<SettingsState>()(
       setLanguage: (l: 'en' | 'zh-Hans' | 'zh-Hant') => set({ language: l }),
       multipleChoiceOnly: false,
       setMultipleChoiceOnly: (v: boolean) => set({ multipleChoiceOnly: v }),
+      hasSeenOnboarding: false,
+      setHasSeenOnboarding: (v: boolean) => set({ hasSeenOnboarding: v }),
     }),
     {
       name: 'stickymem-settings',
@@ -104,6 +108,7 @@ export const useSettingsStore = create<SettingsState>()(
         theme: state.theme,
         language: state.language,
         multipleChoiceOnly: state.multipleChoiceOnly,
+        hasSeenOnboarding: state.hasSeenOnboarding,
       }),
       onRehydrateStorage: () => {
         return async (state) => {

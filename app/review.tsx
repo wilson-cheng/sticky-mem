@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, Image, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QuestionCard from '../src/components/QuestionCard';
@@ -33,6 +33,24 @@ export default function ReviewScreen() {
   const [stats, setStats] = useState({ correct: 0, total: 0 });
   const [sessionDone, setSessionDone] = useState(false);
   const repoRef = useRef<Awaited<ReturnType<typeof initDatabase>> | null>(null);
+  const [sessionStartTime] = useState(Date.now());
+
+  // Animated values for end screen
+  const statAnim = useRef(new Animated.Value(0)).current;
+  const animatingCorrect = useRef(new Animated.Value(0)).current;
+  const animatingTotal = useRef(new Animated.Value(0)).current;
+  const animatingAccuracy = useRef(new Animated.Value(0)).current;
+
+  // Emoji burst
+  const doneEmojis = ['🎯', '🔥', '💪', '⭐', '🌟', '🎉', '✨', '🏆'];
+  const doneEmojiAnims = useRef(
+    doneEmojis.map(() => ({
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      scale: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+    }))
+  ).current;
 
   const handleBack = () => {
     Alert.alert(
@@ -241,6 +259,37 @@ export default function ReviewScreen() {
     ? `${t('home.reviewMore')} (${stats.total}/${dailyReviewTarget})`
     : t('home.startReview');
 
+  // ─── Trigger end-screen animations ─── //
+  useEffect(() => {
+    if (sessionDone && currentIndex >= reviewQueue.length) {
+      // Animate stat counters (stagger: 200ms each)
+      Animated.stagger(200, [
+        Animated.timing(animatingCorrect, { toValue: stats.correct, duration: 600, useNativeDriver: true }),
+        Animated.timing(animatingTotal, { toValue: stats.total, duration: 600, useNativeDriver: true }),
+      ]).start();
+      // Accuracy animates last
+      setTimeout(() => {
+        Animated.timing(animatingAccuracy, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      }, 600);
+
+      // Emoji burst
+      doneEmojiAnims.forEach((anim, i) => {
+        const angle = (i / doneEmojis.length) * Math.PI * 2;
+        const dist = 60 + Math.random() * 60;
+        Animated.parallel([
+          Animated.spring(anim.scale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true, delay: i * 100 }),
+          Animated.timing(anim.opacity, { toValue: 1, duration: 200, delay: i * 100, useNativeDriver: true }),
+          Animated.spring(anim.x, {
+            toValue: Math.cos(angle) * dist, friction: 5, tension: 40, useNativeDriver: true, delay: i * 100,
+          }),
+          Animated.spring(anim.y, {
+            toValue: Math.sin(angle) * dist - 30, friction: 5, tension: 40, useNativeDriver: true, delay: i * 100,
+          }),
+        ]).start();
+      });
+    }
+  }, [sessionDone, currentIndex, reviewQueue.length]);
+
   // ─── Render ─── //
 
   if (loading) {
@@ -256,28 +305,92 @@ export default function ReviewScreen() {
   if (sessionDone && currentIndex >= reviewQueue.length) {
     const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
     const countLabel = stats.total === 1 ? 'concept' : 'concepts';
+
+    // Dynamic encouraging message
+    let emoji = '🎉', message = '', subtitle = '';
+    if (accuracy === 100) {
+      emoji = '🎯'; message = t('review.encouragementPerfect'); subtitle = t('review.encouragementPerfectSub');
+    } else if (accuracy >= 90) {
+      emoji = '🔥'; message = t('review.encouragementAlmost'); subtitle = t('review.encouragementAlmostSub');
+    } else if (accuracy >= 70) {
+      emoji = '💪'; message = t('review.encouragementGood'); subtitle = t('review.encouragementGoodSub');
+    } else if (accuracy >= 50) {
+      emoji = '🧠'; message = t('review.encouragementDecent'); subtitle = t('review.encouragementDecentSub');
+    } else {
+      emoji = '🌱'; message = t('review.encouragementKeepGoing'); subtitle = t('review.encouragementKeepGoingSub');
+    }
+
+    // Session duration
+    const sessionSeconds = Math.round((Date.now() - sessionStartTime) / 1000);
+    const durationText = sessionSeconds >= 60
+      ? `${Math.floor(sessionSeconds / 60)}m ${sessionSeconds % 60}s`
+      : `${sessionSeconds}s`;
+
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <Image source={require('../assets/icon.png')} style={styles.doneLogo} />
-        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.sessionTitle')}</Text>
+        {/* Emoji burst particles */}
+        {doneEmojiAnims.map((anim, i) => (
+          <Animated.Text
+            key={i}
+            style={[styles.burstEmoji, {
+              transform: [
+                { translateX: anim.x },
+                { translateY: anim.y },
+                { scale: anim.scale },
+              ],
+              opacity: anim.opacity,
+            }]}
+          >
+            {doneEmojis[i]}
+          </Animated.Text>
+        ))}
+
+        {/* Main emoji */}
+        <Text style={styles.doneCelebration}>{emoji}</Text>
+
+        {/* Dynamic message */}
+        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{message}</Text>
         <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>
           {t('review.sessionSubtitle', { count: stats.total, count_label: countLabel })}
         </Text>
-        <View style={[styles.doneStatsRow]}>
+
+        {/* Animated stats */}
+        <View style={styles.doneStatsRow}>
           <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
-            <Text style={[styles.doneStatValue, { color: c.accent }]}>{stats.correct}/{stats.total}</Text>
+            <Animated.Text style={[styles.doneStatValue, { color: c.accent }]}>
+              {animatingCorrect.interpolate({
+                inputRange: [0, stats.correct || 1],
+                outputRange: ['0', String(stats.correct)],
+              })}
+              {' / '}
+              {animatingTotal.interpolate({
+                inputRange: [0, stats.total || 1],
+                outputRange: ['0', String(stats.total)],
+              })}
+            </Animated.Text>
             <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.correct')}</Text>
           </View>
           <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
-            <Text style={[styles.doneStatValue, { color: accuracy >= 80 ? '#4CAF50' : '#FF9800' }]}>
-              {accuracy}%
-            </Text>
+            <Animated.Text style={[styles.doneStatValue, { color: accuracy >= 80 ? '#4CAF50' : '#FF9800' }]}>
+              {animatingAccuracy.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', `${accuracy}%`],
+              })}
+            </Animated.Text>
             <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.sessionAccuracy')}</Text>
           </View>
         </View>
-        <Text style={styles.doneFireEmoji}>
-          {accuracy >= 90 ? '🔥🔥🔥' : accuracy >= 70 ? '🔥🔥' : '🔥'}
+
+        {/* Sub-encouragement */}
+        <Text style={[styles.doneSubSubtitle, { color: c.textSecondary }]}>
+          {subtitle}
         </Text>
+
+        {/* Duration */}
+        <Text style={[styles.doneDuration, { color: c.textSecondary }]}>
+          🕐 {durationText}
+        </Text>
+
         <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.blue }]} onPress={goHome}>
           <Text style={styles.homeBtnText}>{t('review.backToHome')}</Text>
         </TouchableOpacity>
@@ -359,7 +472,10 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#6C63FF', borderRadius: 3 },
   doneLogo: { width: 100, height: 100, borderRadius: 20, marginBottom: 16 },
   doneTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
+  doneCelebration: { fontSize: 56, marginBottom: 12 },
   doneSubtitle: { fontSize: 15, marginBottom: 24, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
+  doneSubSubtitle: { fontSize: 13, marginBottom: 8, textAlign: 'center', paddingHorizontal: 32, lineHeight: 18, opacity: 0.8 },
+  doneDuration: { fontSize: 12, marginBottom: 28, opacity: 0.6 },
   doneStatsRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
   doneStatBox: {
     borderRadius: 16, padding: 20, alignItems: 'center',
@@ -372,4 +488,9 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14,
   },
   homeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  // Emoji burst
+  burstEmoji: {
+    position: 'absolute',
+    fontSize: 28,
+  },
 });

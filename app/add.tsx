@@ -25,7 +25,12 @@ export default function AddContentScreen() {
   const [stage, setStage] = useState<Stage>('input');
   const [editingContent, setEditingContent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [success, setSuccess] = useState<{ title: string; count: number } | null>(null);
+  const [success, setSuccess] = useState<{
+    title: string;
+    count: number;
+    summary: string;
+    concepts: string[];
+  } | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
@@ -54,6 +59,17 @@ export default function AddContentScreen() {
   const stepOpacity = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0)).current;
 
+  // Emoji burst
+  const emojiAnims = useRef(
+    Array.from({ length: 8 }, () => ({
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      scale: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+    }))
+  ).current;
+  const burstEmojis = ['🎉', '✨', '🌟', '⭐', '🔥', '💡', '🧠', '🎯'];
+
   useEffect(() => {
     if (stage === 'processing') {
       setCurrentStep(0);
@@ -80,6 +96,29 @@ export default function AddContentScreen() {
       Animated.spring(successScale, {
         toValue: 1, friction: 4, tension: 40, useNativeDriver: true,
       }).start();
+      // Emoji burst
+      emojiAnims.forEach((anim, i) => {
+        const angle = (i / emojiAnims.length) * Math.PI * 2;
+        const distance = 80 + Math.random() * 60;
+        anim.x.setValue(0);
+        anim.y.setValue(0);
+        anim.scale.setValue(0);
+        anim.opacity.setValue(1);
+        Animated.parallel([
+          Animated.spring(anim.x, {
+            toValue: Math.cos(angle) * distance, friction: 6, tension: 40, useNativeDriver: true,
+          }),
+          Animated.spring(anim.y, {
+            toValue: Math.sin(angle) * distance, friction: 6, tension: 40, useNativeDriver: true,
+          }),
+          Animated.spring(anim.scale, {
+            toValue: 1, friction: 5, tension: 60, delay: 50, useNativeDriver: true,
+          }),
+          Animated.timing(anim.opacity, {
+            toValue: 0, duration: 2000, delay: 1500, useNativeDriver: true,
+          }),
+        ]).start();
+      });
     }
   }, [stage]);
 
@@ -131,7 +170,7 @@ export default function AddContentScreen() {
         })),
       });
 
-      setSuccess({ title: digest.title, count: questions.length });
+      setSuccess({ title: digest.title, count: questions.length, summary: digest.summary, concepts: digest.keyConcepts });
       setStage('success');
     } catch (e: any) {
       setStage('editing');
@@ -155,13 +194,47 @@ export default function AddContentScreen() {
   if (stage === 'success' && success) {
     return (
       <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
-        <Animated.View style={{ transform: [{ scale: successScale }], alignItems: 'center' }}>
+        {emojiAnims.map((anim, i) => (
+          <Animated.Text
+            key={i}
+            style={[styles.burstEmoji, {
+              transform: [
+                { translateX: anim.x },
+                { translateY: anim.y },
+                { scale: anim.scale },
+              ],
+              opacity: anim.opacity,
+            }]}
+          >
+            {burstEmojis[i]}
+          </Animated.Text>
+        ))}
+        <Animated.View style={{ transform: [{ scale: successScale }], alignItems: 'center', width: '100%' }}>
           <Text style={styles.successIcon}>🎉</Text>
           <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
           <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
-          <View style={[styles.successCountBox, { backgroundColor: c.successBg }]}>
-            <Text style={styles.successCountNum}>{success.count}</Text>
-            <Text style={styles.successCountLabel}>{t('add.questionsGenerated')}</Text>
+
+          {/* Summary */}
+          <View style={[styles.summarySection, { backgroundColor: c.cardBg }]}>
+            <Text style={[styles.summaryLabel, { color: c.textSecondary }]}>Summary</Text>
+            <Text style={[styles.summaryText, { color: c.textPrimary }]}>{success.summary}</Text>
+          </View>
+
+          {/* Concept Pills */}
+          {success.concepts.length > 0 && (
+            <View style={styles.conceptsRow}>
+              {success.concepts.map((concept, i) => (
+                <View key={i} style={[styles.conceptPill, { backgroundColor: c.accent + '20' }]}>
+                  <Text style={[styles.conceptPillText, { color: c.accent }]}>{concept}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Questions count */}
+          <View style={styles.countRow}>
+            <Text style={[styles.countNum, { color: c.accent }]}>{success.count}</Text>
+            <Text style={[styles.countLabel, { color: c.textSecondary }]}>{t('add.questionsGenerated')}</Text>
           </View>
           <TouchableOpacity
             style={[styles.reviewButton, { backgroundColor: c.blue }]}
@@ -261,18 +334,33 @@ export default function AddContentScreen() {
                     {processingSteps[currentStep]}
                   </Text>
                 </Animated.View>
-                <View style={styles.processingDots}>
-                  {processingSteps.map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.dot,
-                        {
-                          backgroundColor: i <= currentStep ? c.accent : c.border,
-                          width: i <= currentStep ? 24 : 8,
-                        },
-                      ]}
-                    />
+                <View style={styles.timeline}>
+                  {processingSteps.map((step, i) => (
+                    <View key={i} style={styles.timelineRow}>
+                      <View style={styles.timelineNode}>
+                        {i < currentStep ? (
+                          <Text style={styles.timelineCheck}>✅</Text>
+                        ) : i === currentStep ? (
+                          <View style={[styles.timelineActive, { backgroundColor: c.accent }]} />
+                        ) : (
+                          <View style={[styles.timelinePending, { borderColor: c.border }]} />
+                        )}
+                        {i < processingSteps.length - 1 && (
+                          <View style={[styles.timelineLine, { backgroundColor: i < currentStep ? c.accent : c.border }]} />
+                        )}
+                      </View>
+                      <Animated.View style={i === currentStep ? { opacity: stepOpacity } : undefined}>
+                        <Text style={[
+                          styles.timelineLabel,
+                          {
+                            color: i <= currentStep ? c.textPrimary : c.textSecondary,
+                            fontWeight: i <= currentStep ? '600' : '400',
+                          },
+                        ]}>
+                          {step}
+                        </Text>
+                      </Animated.View>
+                    </View>
                   ))}
                 </View>
                 <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
@@ -372,4 +460,53 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 48, alignItems: 'center',
   },
   homeButtonText: { fontSize: 15, fontWeight: '500' },
+  // Emoji burst
+  burstEmoji: {
+    position: 'absolute',
+    fontSize: 28,
+  },
+  // Timeline
+  timeline: {
+    marginVertical: 12, paddingHorizontal: 8, alignSelf: 'stretch',
+  },
+  timelineRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    minHeight: 48,
+  },
+  timelineNode: {
+    width: 28, alignItems: 'center',
+  },
+  timelineCheck: { fontSize: 16 },
+  timelineActive: {
+    width: 12, height: 12, borderRadius: 6, marginTop: 2,
+  },
+  timelinePending: {
+    width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 3,
+  },
+  timelineLine: {
+    position: 'absolute', top: 16, left: 13,
+    width: 2, height: 36,
+  },
+  timelineLabel: { fontSize: 14, lineHeight: 20, flex: 1, marginTop: 1 },
+  // Success — summary + concept pills
+  summarySection: {
+    borderRadius: 16, padding: 16,
+    marginHorizontal: 24, marginBottom: 16, alignSelf: 'stretch',
+  },
+  summaryLabel: {
+    fontSize: 12, fontWeight: '600', textTransform: 'uppercase',
+    letterSpacing: 0.5, marginBottom: 8,
+  },
+  summaryText: { fontSize: 14, lineHeight: 20 },
+  conceptsRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    marginHorizontal: 24, marginBottom: 24, justifyContent: 'center',
+  },
+  conceptPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  conceptPillText: { fontSize: 13, fontWeight: '500' },
+  countRow: {
+    flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 24,
+  },
+  countNum: { fontSize: 32, fontWeight: '800' },
+  countLabel: { fontSize: 15 },
 });

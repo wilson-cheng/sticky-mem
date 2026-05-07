@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, TextInput,
+  View, Text, TouchableOpacity, StyleSheet, TextInput, Animated,
 } from 'react-native';
 import type { Question } from '../types';
 import { useTranslation } from '../i18n/useTranslation';
@@ -32,6 +32,19 @@ export default function QuestionCard({
   const [gradeRecorded, setGradeRecorded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const isTransitioning = useRef(false);
+
+  const advanceWithSlide = useCallback(() => {
+    if (isTransitioning.current) return;
+    isTransitioning.current = true;
+    clearTimers();
+    Animated.timing(slideAnim, {
+      toValue: -400, duration: 200, useNativeDriver: true,
+    }).start(() => {
+      onNext();
+    });
+  }, [clearTimers, onNext, slideAnim]);
 
   useEffect(() => {
     setCardState('answering');
@@ -43,6 +56,13 @@ export default function QuestionCard({
     setCountdown(Math.floor(correctAutoAdvanceMs / 1000));
     if (timerRef.current) clearInterval(timerRef.current);
     if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+    isTransitioning.current = false;
+
+    // Slide in from right
+    slideAnim.setValue(400);
+    Animated.spring(slideAnim, {
+      toValue: 0, friction: 9, tension: 50, useNativeDriver: true,
+    }).start();
   }, [question.id, correctAutoAdvanceMs]);
 
   const clearTimers = useCallback(() => {
@@ -69,7 +89,7 @@ export default function QuestionCard({
       }, 1000);
       timerRef.current = interval;
       autoAdvanceTimerRef.current = setTimeout(() => {
-        onNext();
+        advanceWithSlide();
       }, correctAutoAdvanceMs);
     }
 
@@ -94,7 +114,7 @@ export default function QuestionCard({
       }, 1000);
       timerRef.current = interval;
       autoAdvanceTimerRef.current = setTimeout(() => {
-        onNext();
+        advanceWithSlide();
       }, correctAutoAdvanceMs);
     }
 
@@ -110,111 +130,112 @@ export default function QuestionCard({
     onIdk();
   };
 
-  const handleNextPress = () => {
-    clearTimers();
-    onNext();
-  };
+  const handleNextPress = useCallback(() => {
+    advanceWithSlide();
+  }, [advanceWithSlide]);
 
   // ─── Render ─── //
 
   const isMC = question.type === 'multiple_choice';
 
   return (
-    <View style={[styles.container, { backgroundColor: c.cardBg }]}>
-      {/* Question */}
-      <Text style={[styles.questionText, { color: c.textPrimary }]}>{question.question}</Text>
+    <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
+      <View style={[styles.container, { backgroundColor: c.cardBg }]}>
+        {/* Question */}
+        <Text style={[styles.questionText, { color: c.textPrimary }]}>{question.question}</Text>
 
-      {cardState === 'answering' && (
-        <>
-          {isMC ? (
-            <View style={styles.optionsContainer}>
-              {(question.options || []).map((opt, i) => (
+        {cardState === 'answering' && (
+          <>
+            {isMC ? (
+              <View style={styles.optionsContainer}>
+                {(question.options || []).map((opt, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.optionButton, { backgroundColor: c.statBoxBg, borderColor: c.border }]}
+                    onPress={() => handleSelectOption(opt)}
+                  >
+                    <Text style={[styles.optionText, { color: c.textPrimary }]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.shortAnswerContainer}>
+                <TextInput
+                  style={[styles.input, { backgroundColor: c.statBoxBg, borderColor: c.border, color: c.textPrimary }]}
+                  value={userAnswer}
+                  onChangeText={setUserAnswer}
+                  placeholder="Type your answer..."
+                  placeholderTextColor={c.textSecondary}
+                  onSubmitEditing={handleSubmitAnswer}
+                  returnKeyType="done"
+                />
                 <TouchableOpacity
-                  key={i}
-                  style={[styles.optionButton, { backgroundColor: c.statBoxBg, borderColor: c.border }]}
-                  onPress={() => handleSelectOption(opt)}
+                  style={[styles.submitBtn, { backgroundColor: c.blue }, !userAnswer.trim() && { opacity: 0.5 }]}
+                  onPress={handleSubmitAnswer}
+                  disabled={!userAnswer.trim()}
                 >
-                  <Text style={[styles.optionText, { color: c.textPrimary }]}>{opt}</Text>
+                  <Text style={styles.submitBtnText}>Submit</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.shortAnswerContainer}>
-              <TextInput
-                style={[styles.input, { backgroundColor: c.statBoxBg, borderColor: c.border, color: c.textPrimary }]}
-                value={userAnswer}
-                onChangeText={setUserAnswer}
-                placeholder="Type your answer..."
-                placeholderTextColor={c.textSecondary}
-                onSubmitEditing={handleSubmitAnswer}
-                returnKeyType="done"
-              />
-              <TouchableOpacity
-                style={[styles.submitBtn, { backgroundColor: c.blue }, !userAnswer.trim() && { opacity: 0.5 }]}
-                onPress={handleSubmitAnswer}
-                disabled={!userAnswer.trim()}
-              >
-                <Text style={styles.submitBtnText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* I don't know button */}
-          <TouchableOpacity style={[styles.idkButton, { borderColor: c.border, backgroundColor: c.statBoxBg }]} onPress={handleIdk}>
-            <Text style={[styles.idkButtonText, { color: c.textSecondary }]}>{t('question.iDontKnow')}</Text>
-          </TouchableOpacity>
-        </>
-      )}
-
-      {cardState === 'result' && (
-        <View style={styles.resultSection}>
-          {/* Result banner */}
-          <View style={[
-            styles.resultBanner,
-            isCorrect ? styles.correctBanner : styles.wrongBanner,
-          ]}>
-            <Text style={styles.bannerIcon}>
-              {isCorrect ? '✅' : isIdk ? '💡' : '❌'}
-            </Text>
-            <Text style={[styles.bannerText, { color: c.textPrimary }]}>
-              {isCorrect ? t('question.correct') : isIdk ? 'Answer Revealed' : t('question.incorrect')}
-            </Text>
-          </View>
-
-          {/* Answer */}
-          <View style={[styles.answerBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={[styles.answerLabel, { color: c.textSecondary }]}>{t('question.correctAnswer')}</Text>
-            <Text style={[styles.answerText, { color: c.textPrimary }]}>{question.correctAnswer}</Text>
-          </View>
-
-          {/* Explanation */}
-          {question.explanation && (
-            <View style={[styles.explanationBox, { backgroundColor: c.statBoxBg + '80' }]}>
-              <Text style={[styles.explanationLabel, { color: c.blue }]}>Explanation:</Text>
-              <Text style={[styles.explanationText, { color: c.textSecondary }]}>{question.explanation}</Text>
-            </View>
-          )}
-
-          {/* Actions */}
-          <View style={styles.revealActions}>
-            <TouchableOpacity
-              style={[styles.nextButton, { backgroundColor: isCorrect ? '#4CAF50' : c.blue }]}
-              onPress={handleNextPress}
-            >
-              <Text style={styles.nextButtonText}>
-                {isCorrect && countdown > 0 ? t('question.next', { countdown }) : t('question.continue')}
-              </Text>
-            </TouchableOpacity>
-
-            {showRemove && (
-              <TouchableOpacity style={[styles.removeButton, { borderColor: '#FFCDD2' }]} onPress={onRemove}>
-                <Text style={styles.removeButtonText}>Remove</Text>
-              </TouchableOpacity>
+              </View>
             )}
+
+            {/* I don't know button */}
+            <TouchableOpacity style={[styles.idkButton, { borderColor: c.border, backgroundColor: c.statBoxBg }]} onPress={handleIdk}>
+              <Text style={[styles.idkButtonText, { color: c.textSecondary }]}>{t('question.iDontKnow')}</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {cardState === 'result' && (
+          <View style={styles.resultSection}>
+            {/* Result banner */}
+            <View style={[
+              styles.resultBanner,
+              isCorrect ? styles.correctBanner : styles.wrongBanner,
+            ]}>
+              <Text style={styles.bannerIcon}>
+                {isCorrect ? '✅' : isIdk ? '💡' : '❌'}
+              </Text>
+              <Text style={[styles.bannerText, { color: c.textPrimary }]}>
+                {isCorrect ? t('question.correct') : isIdk ? 'Answer Revealed' : t('question.incorrect')}
+              </Text>
+            </View>
+
+            {/* Answer */}
+            <View style={[styles.answerBox, { backgroundColor: c.statBoxBg }]}>
+              <Text style={[styles.answerLabel, { color: c.textSecondary }]}>{t('question.correctAnswer')}</Text>
+              <Text style={[styles.answerText, { color: c.textPrimary }]}>{question.correctAnswer}</Text>
+            </View>
+
+            {/* Explanation */}
+            {question.explanation && (
+              <View style={[styles.explanationBox, { backgroundColor: c.statBoxBg + '80' }]}>
+                <Text style={[styles.explanationLabel, { color: c.blue }]}>Explanation:</Text>
+                <Text style={[styles.explanationText, { color: c.textSecondary }]}>{question.explanation}</Text>
+              </View>
+            )}
+
+            {/* Actions */}
+            <View style={styles.revealActions}>
+              <TouchableOpacity
+                style={[styles.nextButton, { backgroundColor: isCorrect ? '#4CAF50' : c.blue }]}
+                onPress={handleNextPress}
+              >
+                <Text style={styles.nextButtonText}>
+                  {isCorrect && countdown > 0 ? t('question.next', { countdown }) : t('question.continue')}
+                </Text>
+              </TouchableOpacity>
+
+              {showRemove && (
+                <TouchableOpacity style={[styles.removeButton, { borderColor: '#FFCDD2' }]} onPress={onRemove}>
+                  <Text style={styles.removeButtonText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-      )}
-    </View>
+        )}
+      </View>
+    </Animated.View>
   );
 }
 

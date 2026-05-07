@@ -16,17 +16,29 @@ export default function HomeScreen() {
   const { dueCount, totalQuestions, todayReviewed, loading, refresh } = useSchedule(repo);
   const isConfigured = useSettingsStore((s) => s.isConfigured);
   const isHydrated = useSettingsStore((s) => s.isHydrated);
+  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
   const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
   const { t } = useTranslation();
   const c = useColors();
   const [seeding, setSeeding] = useState(false);
+
+  // ─── Onboarding redirect ─── //
+  useEffect(() => {
+    if (isHydrated && !hasSeenOnboarding) {
+      router.replace('/onboarding');
+    }
+  }, [isHydrated, hasSeenOnboarding, router]);
 
   const handleSeedDemo = useCallback(async () => {
     if (!repo || seeding) return;
     setSeeding(true);
     try {
       await seedDemoContent(repo);
-      Alert.alert(t('home.demoAdded'));
+      Alert.alert(
+        t('home.demoAdded'),
+        '✅ 2 topics loaded: "What is Spaced Repetition?" + "The Pareto Principle"\n\n📝 9 questions total — some due now, some due tomorrow.\n\nTap "Start Review" to see how it works!',
+        [{ text: "Let's Go! 🚀", style: 'default' }],
+      );
       refresh();
     } catch (e: any) {
       console.error('Failed to seed demo:', e);
@@ -44,6 +56,13 @@ export default function HomeScreen() {
   const cardAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
   const actionsAnim = useRef(new Animated.Value(0)).current;
+
+  // Icon micro-animations
+  const statIcon1 = useRef(new Animated.Value(0)).current;
+  const statIcon2 = useRef(new Animated.Value(0)).current;
+  const statIcon3 = useRef(new Animated.Value(0)).current;
+  const gearRotation = useRef(new Animated.Value(0)).current;
+  const btnScale = useRef(new Animated.Value(0.96)).current;
 
   useEffect(() => {
     if (totalQuestions === 0 && !loading) {
@@ -64,13 +83,34 @@ export default function HomeScreen() {
       cardAnim.setValue(0);
       statsAnim.setValue(0);
       actionsAnim.setValue(0);
+      statIcon1.setValue(0);
+      statIcon2.setValue(0);
+      statIcon3.setValue(0);
+      btnScale.setValue(0.96);
       Animated.stagger(120, [
         Animated.timing(cardAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(statsAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(actionsAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-      ]).start();
+      ]).start(() => {
+        // Bounce stat icons after stagger
+        Animated.stagger(80, [
+          Animated.spring(statIcon1, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
+          Animated.spring(statIcon2, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
+          Animated.spring(statIcon3, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
+        ]).start();
+        // Pulse the primary button
+        Animated.spring(btnScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
+      });
     }
   }, [totalQuestions, loading, cardAnim, statsAnim, actionsAnim]);
+
+  // Gear rotation micro-animation
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(gearRotation, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(gearRotation, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [gearRotation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +121,8 @@ export default function HomeScreen() {
   // Determine if the daily target has been met
   const targetMet = dailyReviewTarget > 0 && todayReviewed >= dailyReviewTarget;
   const displayDueCount = targetMet ? 0 : dueCount;
+  const isBehind = !targetMet && dueCount > Math.max(dailyReviewTarget * 2, 15);
+  const isActive = !targetMet && dueCount > 0 && !isBehind;
   const buttonLabel =
     todayReviewed === 0
       ? t('home.startReview')
@@ -125,7 +167,13 @@ export default function HomeScreen() {
               <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/settings')}>
-              <Text style={styles.settingsIcon}>⚙️</Text>
+              <Animated.Text style={[styles.settingsIcon, {
+                transform: [{
+                  rotate: gearRotation.interpolate({
+                    inputRange: [0, 1], outputRange: ['0deg', '15deg'],
+                  })
+                }]
+              }]}>⚙️</Animated.Text>
             </TouchableOpacity>
           </View>
 
@@ -236,7 +284,13 @@ export default function HomeScreen() {
             <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Text style={styles.settingsIcon}>⚙️</Text>
+            <Animated.Text style={[styles.settingsIcon, {
+              transform: [{
+                rotate: gearRotation.interpolate({
+                  inputRange: [0, 1], outputRange: ['0deg', '15deg'],
+                })
+              }]
+            }]}>⚙️</Animated.Text>
           </TouchableOpacity>
         </View>
 
@@ -251,20 +305,33 @@ export default function HomeScreen() {
         >
           <View style={[styles.reviewCard, { backgroundColor: c.cardBg }]}>
             <Text style={[styles.reviewCardTitle, { color: c.textSecondary }]}>
-              ⚡ {t('home.todayReview')} {getAccuracyEmoji()}
+              {isBehind ? '🚨' : '⚡'} {t('home.todayReview')} {getAccuracyEmoji()}
             </Text>
 
             {loading ? (
               <ActivityIndicator size="large" color={c.blue} style={{ marginVertical: 24 }} />
             ) : displayDueCount > 0 ? (
               <>
-                {/* Due count in accent circle */}
-                <View style={[styles.countCircle, { backgroundColor: c.accent + '18' }]}>
-                  <Text style={[styles.countNumber, { color: c.accent }]}>{dueCount}</Text>
+                {/* Due count circle */}
+                <View style={[styles.countCircle, { backgroundColor: isBehind ? c.warningBg : c.accent + '18' }]}>
+                  <Text style={[styles.countNumber, { color: isBehind ? c.warning : c.accent }]}>{dueCount}</Text>
                 </View>
                 <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
-                  {dueCount === 1 ? t('home.questionReady') : t('home.questionsReady')}
+                  {isBehind
+                    ? 'Backlog building — time to catch up!'
+                    : dueCount === 1
+                      ? t('home.questionReady')
+                      : t('home.questionsReady')}
                 </Text>
+
+                {/* Behind urgency bar */}
+                {isBehind && (
+                  <View style={[styles.behindBar, { backgroundColor: c.warningBg }]}>
+                    <Text style={[styles.behindBarText, { color: c.warning }]}>
+                      📋 {dueCount} questions piling up — try a quick session now
+                    </Text>
+                  </View>
+                )}
 
                 {/* Daily target progress bar */}
                 {dailyReviewTarget > 0 && todayReviewed > 0 && (
@@ -282,13 +349,15 @@ export default function HomeScreen() {
                 )}
 
                 {/* Start Review Button */}
-                <TouchableOpacity
-                  style={[styles.primaryButton, { backgroundColor: c.blue }]}
-                  onPress={() => router.push('/review')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
-                </TouchableOpacity>
+                <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+                  <TouchableOpacity
+                    style={[styles.primaryButton, { backgroundColor: c.blue }]}
+                    onPress={() => router.push('/review')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
               </>
             ) : totalQuestions > 0 ? (
               <>
@@ -305,13 +374,15 @@ export default function HomeScreen() {
                   </Text>
                 )}
                 {targetMet && (
-                  <TouchableOpacity
-                    style={[styles.primaryButton, { backgroundColor: c.accent }]}
-                    onPress={() => router.push('/review')}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
-                  </TouchableOpacity>
+                  <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, { backgroundColor: c.accent }]}
+                      onPress={() => router.push('/review')}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 )}
               </>
             ) : null}
@@ -329,17 +400,23 @@ export default function HomeScreen() {
         >
         <View style={styles.statsRow}>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={styles.statIcon}>📚</Text>
+            <Animated.View style={{ transform: [{ scale: statIcon1 }] }}>
+              <Text style={styles.statIcon}>📚</Text>
+            </Animated.View>
             <Text style={[styles.statNumber, { color: c.textPrimary }]}>{totalQuestions}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.totalCards')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={styles.statIcon}>⏰</Text>
+            <Animated.View style={{ transform: [{ scale: statIcon2 }] }}>
+              <Text style={styles.statIcon}>⏰</Text>
+            </Animated.View>
             <Text style={[styles.statNumber, { color: displayDueCount > 0 ? c.blue : c.textPrimary }]}>{displayDueCount}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.readyToReview')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Text style={styles.statIcon}>✅</Text>
+            <Animated.View style={{ transform: [{ scale: statIcon3 }] }}>
+              <Text style={styles.statIcon}>✅</Text>
+            </Animated.View>
             <Text style={[styles.statNumber, { color: c.textPrimary }]}>{todayReviewed}</Text>
             <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.reviewedTodayLabel')}</Text>
           </View>
@@ -551,4 +628,10 @@ const styles = StyleSheet.create({
   actionIcon: { fontSize: 32 },
   actionText: { fontSize: 15, fontWeight: '600' },
   actionHint: { fontSize: 11, marginTop: 1, opacity: 0.7 },
+  // Behind urgency
+  behindBar: {
+    borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14,
+    marginBottom: 12, alignSelf: 'stretch',
+  },
+  behindBarText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });
