@@ -7,7 +7,21 @@
  * 3. If all fail, throw a clear error
  */
 
-type FetchFn = () => Promise<string>;
+type FetchFn = (url: string) => Promise<string>;
+
+/**
+ * Create an AbortSignal with a timeout.
+ * Uses AbortController for maximum browser compatibility
+ * (AbortSignal.timeout() is Chrome 103+, Safari 15.4+).
+ */
+function signalWithTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timer),
+  };
+}
 
 /**
  * Try Jina Reader API directly (no CORS proxy).
@@ -15,17 +29,22 @@ type FetchFn = () => Promise<string>;
  */
 const tryJinaDirect: FetchFn = async (url: string) => {
   const jinaUrl = `https://r.jina.ai/${encodeURI(url)}`;
-  const response = await fetch(jinaUrl, {
-    headers: {
-      Accept: 'text/plain, text/markdown',
-      'X-Return-Format': 'markdown',
-    },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`Jina returned HTTP ${response.status}`);
-  const markdown = await response.text();
-  if (!markdown || markdown.length < 50) throw new Error('Jina returned empty content');
-  return markdown;
+  const { signal, clear } = signalWithTimeout(15000);
+  try {
+    const response = await fetch(jinaUrl, {
+      headers: {
+        Accept: 'text/plain, text/markdown',
+        'X-Return-Format': 'markdown',
+      },
+      signal,
+    });
+    if (!response.ok) throw new Error(`Jina returned HTTP ${response.status}`);
+    const markdown = await response.text();
+    if (!markdown || markdown.length < 50) throw new Error('Jina returned empty content');
+    return markdown;
+  } finally {
+    clear();
+  }
 };
 
 /**
@@ -36,30 +55,34 @@ const tryJinaDirect: FetchFn = async (url: string) => {
 const tryJinaViaProxy: FetchFn = async (url: string) => {
   const jinaUrl = `https://r.jina.ai/${encodeURI(url)}`;
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(jinaUrl)}`;
-  const response = await fetch(proxyUrl, {
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!response.ok) throw new Error(`CORS proxy returned HTTP ${response.status}`);
-  const data = await response.json();
-  if (!data?.contents || typeof data.contents !== 'string') {
-    throw new Error('CORS proxy returned unexpected response');
+  const { signal, clear } = signalWithTimeout(30000);
+  try {
+    const response = await fetch(proxyUrl, { signal });
+    if (!response.ok) throw new Error(`CORS proxy returned HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data?.contents || typeof data.contents !== 'string') {
+      throw new Error('CORS proxy returned unexpected response');
+    }
+    return data.contents as string;
+  } finally {
+    clear();
   }
-  return data.contents as string;
 };
 
 const tryDirectFetchViaProxy: FetchFn = async (url: string) => {
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const response = await fetch(proxyUrl, {
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!response.ok) throw new Error(`Direct proxy returned HTTP ${response.status}`);
-  const data = await response.json();
-  if (!data?.contents || typeof data.contents !== 'string') {
-    throw new Error('Direct proxy returned unexpected response');
+  const { signal, clear } = signalWithTimeout(30000);
+  try {
+    const response = await fetch(proxyUrl, { signal });
+    if (!response.ok) throw new Error(`Direct proxy returned HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data?.contents || typeof data.contents !== 'string') {
+      throw new Error('Direct proxy returned unexpected response');
+    }
+    return data.contents as string;
+  } finally {
+    clear();
   }
-
-  // Return raw content scraped by allorigins
-  return data.contents as string;
 };
 
 /**
