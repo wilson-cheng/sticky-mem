@@ -13,7 +13,6 @@ import {
   Modal,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MarkdownEditor from './MarkdownEditor';
@@ -58,36 +57,31 @@ export default function ContentEditorModal({
 
     setSaving(true);
     try {
+      // Always save first
       await onSave(editedMarkdown);
 
-      // Ask about regeneration
-      if (Platform.OS === 'web') {
-        const regenerate = window.confirm(
-          'Content updated! Clear old questions and regenerate based on the new content?'
-        );
-        if (regenerate) {
-          await onRegenerate(editedMarkdown);
-        }
-      } else {
-        // Use Alert on native
-        Alert.alert(
-          'Content Updated',
-          'Clear old questions and regenerate based on the new content?',
-          [
-            { text: 'Keep Questions', style: 'cancel', onPress: onClose },
-            {
-              text: 'Regenerate',
-              onPress: async () => {
+      // Ask about regeneration — unified for web & native
+      Alert.alert(
+        'Content Updated',
+        'Clear old questions and regenerate based on the new content?',
+        [
+          {
+            text: 'No',
+            style: 'cancel',
+            onPress: onClose,
+          },
+          {
+            text: 'Yes',
+            onPress: async () => {
+              try {
                 await onRegenerate(editedMarkdown);
+              } finally {
                 onClose();
-              },
+              }
             },
-          ]
-        );
-        return; // Don't close yet on native
-      }
-
-      onClose();
+          },
+        ]
+      );
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to save changes');
     } finally {

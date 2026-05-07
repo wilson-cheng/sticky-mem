@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
 
@@ -76,6 +76,33 @@ export default function MarkdownEditor({
   const c = useColors();
   const [editorReady, setEditorReady] = useState(false);
   const [contentSet, setContentSet] = useState(false);
+
+  // Web fallback: use a native <textarea> to avoid iframe scroll/focus issues
+  if (Platform.OS === 'web') {
+    return (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={!editable}
+        style={{
+          width: '100%',
+          minHeight,
+          padding: 12,
+          fontSize: 16,
+          lineHeight: 1.6,
+          border: `1px solid ${c.border || '#DDD'}`,
+          borderRadius: 8,
+          backgroundColor: c.inputBg || '#F9F9F9',
+          color: c.textPrimary || '#333',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          resize: 'vertical',
+          outline: 'none',
+          boxSizing: 'border-box',
+        }}
+      />
+    );
+  }
 
   // Convert markdown to HTML
   const html = React.useMemo(() => markdownToHtml(value), [value]);
