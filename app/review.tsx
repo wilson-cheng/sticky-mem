@@ -357,17 +357,21 @@ export default function ReviewScreen() {
         {/* Animated stats */}
         <View style={styles.doneStatsRow}>
           <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
-            <Animated.Text style={[styles.doneStatValue, { color: c.accent }]}>
-              {animatingCorrect.interpolate({
-                inputRange: [0, stats.correct || 1],
-                outputRange: ['0', String(stats.correct)],
-              })}
-              {' / '}
-              {animatingTotal.interpolate({
-                inputRange: [0, stats.total || 1],
-                outputRange: ['0', String(stats.total)],
-              })}
-            </Animated.Text>
+            <View style={styles.doneStatNumRow}>
+              <Animated.Text style={[styles.doneStatValue, { color: c.accent }]}>
+                {animatingCorrect.interpolate({
+                  inputRange: [0, stats.correct || 1],
+                  outputRange: ['0', String(stats.correct)],
+                })}
+              </Animated.Text>
+              <Text style={[styles.doneStatSlash, { color: c.accent }]}> / </Text>
+              <Animated.Text style={[styles.doneStatValue, { color: c.accent }]}>
+                {animatingTotal.interpolate({
+                  inputRange: [0, stats.total || 1],
+                  outputRange: ['0', String(stats.total)],
+                })}
+              </Animated.Text>
+            </View>
             <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.correct')}</Text>
           </View>
           <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
@@ -480,6 +484,12 @@ const styles = StyleSheet.create({
   doneStatBox: {
     borderRadius: 16, padding: 20, alignItems: 'center',
     minWidth: 120,
+  },
+  doneStatNumRow: {
+    flexDirection: 'row', alignItems: 'baseline',
+  },
+  doneStatSlash: {
+    fontSize: 32, fontWeight: '800', marginHorizontal: 2,
   },
   doneStatValue: { fontSize: 32, fontWeight: '800' },
   doneStatLabel: { fontSize: 13, marginTop: 4 },
