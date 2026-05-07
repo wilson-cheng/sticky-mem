@@ -3,7 +3,7 @@
  * Converts between Markdown (app storage format) and HTML (editor format).
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
@@ -82,16 +82,10 @@ export default function MarkdownEditor({
 }: Props) {
   const richText = useRef<RichEditor>(null);
   const c = useColors();
-  const [initialContentSet, setInitialContentSet] = useState(false);
 
-  // Set initial HTML content once WebView finishes loading
-  const handleEditorLoad = useCallback(() => {
-    if (!initialContentSet && value) {
-      const html = markdownToHtml(value);
-      richText.current?.setContentHTML(html);
-      setInitialContentSet(true);
-    }
-  }, [value, initialContentSet]);
+  // Convert markdown to HTML once at mount — library's built-in initialContentHTML
+  // handles the timing (waits for WebView onLoad internally)
+  const initialHtml = useMemo(() => markdownToHtml(value), []);
 
   const handleChange = useCallback(async (html: string) => {
     try {
@@ -120,7 +114,7 @@ export default function MarkdownEditor({
       <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD', backgroundColor: editorStyle.backgroundColor }]}>
         <RichEditor
           ref={richText}
-          onLoad={handleEditorLoad}
+          initialContentHTML={initialHtml}
           onChange={handleChange}
           placeholder={placeholder}
           editorStyle={editorStyle}
