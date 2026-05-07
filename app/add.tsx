@@ -148,14 +148,10 @@ export default function AddContentScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
+    <>
       {stage === 'editing' ? (
-        /* Editing: flex layout to fill screen */
-        <View style={[styles.container, { backgroundColor: c.bg, flex: 1 }]}>
+        /* Editing: flex layout, keyboard handled via marginBottom */
+        <View style={[styles.container, { backgroundColor: c.bg, flex: 1, marginBottom: keyboardHeight + 16 }]}>
           {/* Header */}
           <View style={styles.editorHeader}>
             <View style={{ flex: 1 }}>
@@ -181,7 +177,7 @@ export default function AddContentScreen() {
           </View>
 
           {/* Save button */}
-          <View style={[styles.saveBar, { borderTopColor: c.border, paddingBottom: keyboardHeight + (Platform.OS === 'ios' ? 20 : 12) }]}>
+          <View style={[styles.saveBar, { borderTopColor: c.border }]}>
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: c.blue }]}
               onPress={handleSaveAndGenerate}
@@ -193,34 +189,39 @@ export default function AddContentScreen() {
           </View>
         </View>
       ) : (
-        /* Input / Processing: ScrollView */
-        <ScrollView
-          style={[styles.container, { backgroundColor: c.bg }]}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
-          {stage === 'input' && (
-            <>
-              <Text style={[styles.title, { color: c.textPrimary }]}>{t('add.title')}</Text>
-              <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-                {t('add.subtitle')}
-              </Text>
-              <AddContentForm onSubmit={handleSubmit} isProcessing={false} />
-            </>
-          )}
+          <ScrollView
+            style={[styles.container, { backgroundColor: c.bg }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            {stage === 'input' && (
+              <>
+                <Text style={[styles.title, { color: c.textPrimary }]}>{t('add.title')}</Text>
+                <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+                  {t('add.subtitle')}
+                </Text>
+                <AddContentForm onSubmit={handleSubmit} isProcessing={false} />
+              </>
+            )}
 
-          {stage === 'processing' && (
-            <View style={styles.processingContainer}>
-              <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
-                {t('add.processingTitle')}
-              </Text>
-              <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
-                {t('add.processingDetail', { count: questionsPerContent })}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+            {stage === 'processing' && (
+              <View style={styles.processingContainer}>
+                <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
+                  {t('add.processingTitle')}
+                </Text>
+                <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
+                  {t('add.processingDetail', { count: questionsPerContent })}
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   saveBar: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    paddingBottom: 16,
     borderTopWidth: 1,
   },
   saveBtn: {

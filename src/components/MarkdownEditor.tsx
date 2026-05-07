@@ -177,9 +177,9 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     borderWidth: 0,
-    paddingTop: 10,
-    paddingBottom: 2,
-    height: 52,
+    paddingTop: 16,
+    paddingBottom: 4,
+    height: 58,
   },
   toolbarFlat: {
     flexGrow: 0,
