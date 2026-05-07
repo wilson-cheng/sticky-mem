@@ -1,9 +1,12 @@
 /**
  * Native WYSIWYG Markdown editor using react-native-pell-rich-editor.
  * Converts between Markdown (app storage format) and HTML (editor format).
+ *
+ * Uses editorInitializedCallback + ref.setContentHTML() for reliable
+ * content injection (avoids timing issues with initialContentHTML prop).
  */
 
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
@@ -16,18 +19,8 @@ interface Props {
   editable?: boolean;
 }
 
-// Lazy-loaded converters (shared imports from web version)
-let marked: any = null;
+// Lazy-loaded converters
 let turndown: any = null;
-
-async function getMarked() {
-  if (!marked) {
-    const mod = await import('marked');
-    marked = mod.marked || mod.default;
-    marked.setOptions({ breaks: true, gfm: true });
-  }
-  return marked;
-}
 
 async function getTurndown() {
   if (!turndown) {
@@ -39,13 +32,10 @@ async function getTurndown() {
 
 function markdownToHtml(md: string): string {
   if (!md) return '<p></p>';
-  // Basic escaping to prevent XSS in editor webview
   const safe = md
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  // Simple markdown to HTML conversion using regex for common patterns
-  // This is a lightweight fallback; the full marked parser is async
   let html = safe;
   // Code blocks (```) — must be before inline code
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
@@ -63,7 +53,7 @@ function markdownToHtml(md: string): string {
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1"/>');
   // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // Unordered lists
+  // Unordered lists (dash only)
   html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
   // Horizontal rules
@@ -82,10 +72,27 @@ export default function MarkdownEditor({
 }: Props) {
   const richText = useRef<RichEditor>(null);
   const c = useColors();
+  const [editorReady, setEditorReady] = useState(false);
+  const [contentSet, setContentSet] = useState(false);
 
-  // Convert markdown to HTML once at mount — library's built-in initialContentHTML
-  // handles the timing (waits for WebView onLoad internally)
-  const initialHtml = useMemo(() => markdownToHtml(value), []);
+  // Convert markdown to HTML
+  const html = React.useMemo(() => markdownToHtml(value), [value]);
+
+  // Once the editor WebView is ready, inject the content
+  useEffect(() => {
+    if (editorReady && !contentSet && html) {
+      try {
+        richText.current?.setContentHTML(html);
+        setContentSet(true);
+      } catch (e) {
+        console.error('[MarkdownEditor] Failed to set content:', e);
+      }
+    }
+  }, [editorReady, contentSet, html]);
+
+  const handleEditorInit = useCallback(() => {
+    setEditorReady(true);
+  }, []);
 
   const handleChange = useCallback(async (html: string) => {
     try {
@@ -93,7 +100,7 @@ export default function MarkdownEditor({
       const md = td.turndown(html);
       onChange(md);
     } catch {
-      // If turndown fails, just pass the raw HTML (better than losing data)
+      // If turndown fails, just pass the raw HTML
       onChange(html);
     }
   }, [onChange]);
@@ -111,17 +118,16 @@ export default function MarkdownEditor({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { minHeight }]}
     >
-      <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD', backgroundColor: editorStyle.backgroundColor }]}>
+      <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD' }]}>
         <RichEditor
           ref={richText}
-          initialContentHTML={initialHtml}
           onChange={handleChange}
           placeholder={placeholder}
           editorStyle={editorStyle}
           disabled={!editable}
           useContainer={false}
-          initialHeight={Math.max(200, minHeight - 80)}
           style={styles.editor}
+          editorInitializedCallback={handleEditorInit}
         />
       </View>
       {editable && (
@@ -161,9 +167,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     overflow: 'hidden',
+    minHeight: 200,
   },
   editor: {
     flex: 1,
+    minHeight: 200,
   },
   toolbar: {
     marginTop: 8,
