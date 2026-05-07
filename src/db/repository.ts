@@ -22,6 +22,18 @@ export class Repository {
     await this.db.run('DELETE FROM daily_stats');
   }
 
+  // ─── Helpers ─── //
+
+  private shuffleOptions(options: string[]): string[] {
+    // Fisher-Yates: randomize option order so correct answer isn't always first
+    const shuffled = [...options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   // ─── Content ─── //
 
   async insertContent(content: Content): Promise<void> {
@@ -91,7 +103,7 @@ export class Repository {
     return rows.map(r => ({
       id: r.id, contentId: r.content_id, type: r.type,
       question: r.question, correctAnswer: r.correct_answer,
-      options: r.options ? JSON.parse(r.options) : undefined,
+      options: r.options ? this.shuffleOptions(JSON.parse(r.options)) : undefined,
       explanation: r.explanation ?? undefined,
       createdAt: r.created_at,
     }));
@@ -106,7 +118,7 @@ export class Repository {
     return {
       id: r.id, contentId: r.content_id, type: r.type,
       question: r.question, correctAnswer: r.correct_answer,
-      options: r.options ? JSON.parse(r.options) : undefined,
+      options: r.options ? this.shuffleOptions(JSON.parse(r.options)) : undefined,
       explanation: r.explanation ?? undefined,
       createdAt: r.created_at,
     };
@@ -143,7 +155,7 @@ export class Repository {
       type: r.type,
       question: r.question,
       correctAnswer: r.correct_answer,
-      options: r.options ? JSON.parse(r.options) : undefined,
+      options: r.options ? this.shuffleOptions(JSON.parse(r.options)) : undefined,
       explanation: r.explanation ?? undefined,
       createdAt: r.created_at,
       card: {

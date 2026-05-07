@@ -37,6 +37,9 @@ jobs:
       - name: Fix import.meta — add type="module" to script tag
         run: sed -i 's|<script src=|<script type="module" src=|' dist/index.html
 
+      - name: Fix 404 — copy index.html for SPA routing
+        run: cp dist/index.html dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
