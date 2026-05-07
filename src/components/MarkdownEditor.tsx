@@ -1,11 +1,12 @@
 /**
- * Native fallback for Markdown editor.
- * On mobile, shows a simple TextInput with the raw Markdown source.
- * The full WYSIWYG (TipTap) is only available on web.
+ * Native WYSIWYG Markdown editor using react-native-pell-rich-editor.
+ * Converts between Markdown (app storage format) and HTML (editor format).
  */
 
-import React from 'react';
-import { View, TextInput, StyleSheet, Text, Platform } from 'react-native';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import { useColors } from '../theme/useColors';
 
 interface Props {
   value: string;
@@ -15,6 +16,63 @@ interface Props {
   editable?: boolean;
 }
 
+// Lazy-loaded converters (shared imports from web version)
+let marked: any = null;
+let turndown: any = null;
+
+async function getMarked() {
+  if (!marked) {
+    const mod = await import('marked');
+    marked = mod.marked || mod.default;
+    marked.setOptions({ breaks: true, gfm: true });
+  }
+  return marked;
+}
+
+async function getTurndown() {
+  if (!turndown) {
+    const Turndown = await import('turndown');
+    turndown = Turndown.default || Turndown;
+  }
+  return new turndown({ headingStyle: 'atx', bulletListMarker: '-' });
+}
+
+function markdownToHtml(md: string): string {
+  if (!md) return '<p></p>';
+  // Basic escaping to prevent XSS in editor webview
+  const safe = md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  // Simple markdown to HTML conversion using regex for common patterns
+  // This is a lightweight fallback; the full marked parser is async
+  let html = safe;
+  // Code blocks (```) — must be before inline code
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Headings
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Bold and italic
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Images
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1"/>');
+  // Links
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr/>');
+  // Paragraphs — wrap remaining lines
+  html = html.replace(/^(?!<[a-zA-Z/])(.+)$/gm, '<p>$1</p>');
+  return html;
+}
+
 export default function MarkdownEditor({
   value,
   onChange,
@@ -22,23 +80,80 @@ export default function MarkdownEditor({
   minHeight = 300,
   editable = true,
 }: Props) {
+  const richText = useRef<RichEditor>(null);
+  const c = useColors();
+  const [initialContentSet, setInitialContentSet] = useState(false);
+
+  // Set initial HTML content once
+  useEffect(() => {
+    if (richText.current && !initialContentSet) {
+      const html = markdownToHtml(value);
+      richText.current.setContentHTML(html);
+      setInitialContentSet(true);
+    }
+  }, [value, initialContentSet]);
+
+  const handleChange = useCallback(async (html: string) => {
+    try {
+      const td = await getTurndown();
+      const md = td.turndown(html);
+      onChange(md);
+    } catch {
+      // If turndown fails, just pass the raw HTML (better than losing data)
+      onChange(html);
+    }
+  }, [onChange]);
+
+  const editorStyle = {
+    backgroundColor: c.inputBg || '#F9F9F9',
+    color: c.textPrimary || '#333',
+    placeholderColor: c.textSecondary || '#999',
+    caretColor: c.blue || '#4A90D9',
+    contentCSSText: `font-size: 16px; line-height: 1.6; padding: 8px; min-height: ${Math.max(200, minHeight - 80)}px;`,
+  };
+
   return (
-    <View style={[styles.container, { minHeight }]}>
-      {Platform.OS !== 'web' && (
-        <Text style={styles.badge}>
-          Markdown source editor (WYSIWYG available on web)
-        </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.container, { minHeight }]}
+    >
+      <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD', backgroundColor: editorStyle.backgroundColor }]}>
+        <RichEditor
+          ref={richText}
+          onChange={handleChange}
+          placeholder={placeholder}
+          editorStyle={editorStyle}
+          disabled={!editable}
+          useContainer={false}
+          initialHeight={Math.max(200, minHeight - 80)}
+          style={styles.editor}
+        />
+      </View>
+      {editable && (
+        <RichToolbar
+          editor={richText}
+          style={[styles.toolbar, { backgroundColor: c.cardBg || '#fff' }]}
+          selectedIconTint={c.blue || '#4A90D9'}
+          iconTint={c.textSecondary || '#666'}
+          disabledIconTint="#CCC"
+          unselectedButtonStyle={styles.toolBtn}
+          actions={[
+            actions.setBold,
+            actions.setItalic,
+            actions.setUnderline,
+            actions.heading1,
+            actions.heading2,
+            actions.insertBulletsList,
+            actions.insertOrderedList,
+            actions.insertLink,
+            actions.blockquote,
+            actions.code,
+            actions.undo,
+            actions.redo,
+          ]}
+        />
       )}
-      <TextInput
-        style={[styles.textArea, { minHeight: minHeight - 40 }]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        multiline
-        textAlignVertical="top"
-        editable={editable}
-      />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -46,21 +161,22 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  editorWrapper: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    backgroundColor: '#fff',
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  badge: {
-    fontSize: 11,
-    color: '#999',
-    fontStyle: 'italic',
-    padding: 8,
-    paddingBottom: 0,
+  editor: {
+    flex: 1,
   },
-  textArea: {
-    padding: 14,
-    fontSize: 16,
-    backgroundColor: '#F9F9F9',
-    lineHeight: 24,
+  toolbar: {
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 0,
+    paddingVertical: 4,
+  },
+  toolBtn: {
+    marginHorizontal: 2,
   },
 });
