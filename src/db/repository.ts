@@ -71,6 +71,20 @@ export class Repository {
     };
   }
 
+  async updateContent(id: string, rawText: string, title?: string): Promise<void> {
+    if (title) {
+      await this.db.run(
+        'UPDATE contents SET raw_text = ?, title = ?, updated_at = ? WHERE id = ?',
+        [rawText, title, Date.now(), id]
+      );
+    } else {
+      await this.db.run(
+        'UPDATE contents SET raw_text = ?, updated_at = ? WHERE id = ?',
+        [rawText, Date.now(), id]
+      );
+    }
+  }
+
   async deleteQuestionsByContentId(contentId: string): Promise<void> {
     await this.db.run('DELETE FROM cards WHERE question_id IN (SELECT id FROM questions WHERE content_id = ?)', [contentId]);
     await this.db.run('DELETE FROM questions WHERE content_id = ?', [contentId]);

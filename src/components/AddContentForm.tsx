@@ -9,12 +9,32 @@ interface Props {
 export default function AddContentForm({ onSubmit, isProcessing }: Props) {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'text' | 'url'>('text');
+  const [fetchingUrl, setFetchingUrl] = useState(false);
 
   const handleSubmit = async () => {
-    if (!input.trim() || isProcessing) return;
-    await onSubmit(input.trim());
-    setInput('');
+    if (!input.trim() || isProcessing || fetchingUrl) return;
+
+    if (mode === 'url') {
+      // Fetch URL content and convert to markdown
+      setFetchingUrl(true);
+      try {
+        const { fetchUrlAsMarkdown } = await import('../utils/fetchUrl');
+        const markdown = await fetchUrlAsMarkdown(input.trim());
+        setInput('');
+        await onSubmit(markdown);
+      } catch (e: any) {
+        // Error is thrown from fetchUrlAsMarkdown, will be caught by parent
+        throw e;
+      } finally {
+        setFetchingUrl(false);
+      }
+    } else {
+      await onSubmit(input.trim());
+      setInput('');
+    }
   };
+
+  const isBusy = isProcessing || fetchingUrl;
 
   return (
     <View style={styles.container}>
@@ -55,16 +75,26 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
       )}
 
       <TouchableOpacity
-        style={[styles.submitButton, (!input.trim() || isProcessing) && styles.submitButtonDisabled]}
+        style={[styles.submitButton, (!input.trim() || isBusy) && styles.submitButtonDisabled]}
         onPress={handleSubmit}
-        disabled={!input.trim() || isProcessing}
+        disabled={!input.trim() || isBusy}
       >
-        {isProcessing ? (
+        {fetchingUrl ? (
+          <ActivityIndicator color="#fff" />
+        ) : isProcessing ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitText}>Digest & Generate Questions</Text>
+          <Text style={styles.submitText}>
+            {mode === 'url' ? 'Fetch & Edit Content' : 'Edit Content'}
+          </Text>
         )}
       </TouchableOpacity>
+
+      {mode === 'url' && !fetchingUrl && (
+        <Text style={styles.hint}>
+          The URL will be fetched, converted to Markdown, and opened in the editor for review.
+        </Text>
+      )}
     </View>
   );
 }
@@ -94,4 +124,8 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { backgroundColor: '#CCC' },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  hint: {
+    fontSize: 12, color: '#888', marginTop: 8,
+    textAlign: 'center', lineHeight: 16,
+  },
 });
