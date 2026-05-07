@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../src/hooks/useDatabase';
@@ -103,7 +103,7 @@ export default function HomeScreen() {
         <View style={[styles.header, { paddingTop: 0 }]}>
           <View style={styles.headerLeft}>
             <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-              <Text style={styles.logoEmoji}>🧠</Text>
+              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
             </View>
             <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
           </View>
@@ -124,7 +124,7 @@ export default function HomeScreen() {
           <View style={[styles.header, { paddingTop: insets.top }]}>
             <View style={styles.headerLeft}>
               <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-                <Text style={styles.logoEmoji}>🧠</Text>
+                <Image source={require('../assets/icon.png')} style={styles.logoImage} />
               </View>
               <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
             </View>
@@ -141,7 +141,7 @@ export default function HomeScreen() {
             ]}
           >
             <View style={[styles.heroIconContainer, { backgroundColor: c.accent + '15' }]}>
-              <Text style={styles.heroEmoji}>🧠</Text>
+              <Image source={require('../assets/icon.png')} style={styles.heroLogoImage} />
             </View>
             <Text style={[styles.heroTitle, { color: c.textPrimary }]}>
               {t('home.emptyTitle')}
@@ -237,7 +237,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
-              <Text style={styles.logoEmoji}>🧠</Text>
+              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
             </View>
             <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
           </View>
@@ -419,6 +419,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   logoEmoji: { fontSize: 20 },
+  logoImage: { width: 22, height: 22, borderRadius: 4 },
   appName: { fontSize: 28, fontWeight: '800' },
   settingsIcon: { fontSize: 24 },
   loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -432,6 +433,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   heroEmoji: { fontSize: 40 },
+  heroLogoImage: { width: 50, height: 50, borderRadius: 8 },
   heroTitle: {
     fontSize: 24, fontWeight: '800',
     textAlign: 'center', lineHeight: 32,
