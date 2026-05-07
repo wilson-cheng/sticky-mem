@@ -4,10 +4,12 @@
  *
  * Uses editorInitializedCallback + ref.setContentHTML() for reliable
  * content injection (avoids timing issues with initialContentHTML prop).
+ *
+ * Layout: toolbar on TOP, editor fills remaining space.
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
 
@@ -38,7 +40,7 @@ function markdownToHtml(md: string): string {
     .replace(/>/g, '&gt;');
   let html = safe;
   // Code blocks (```) — must be before inline code
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  html = html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g, '<pre><code>$2</code></pre>');
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   // Headings
@@ -114,10 +116,36 @@ export default function MarkdownEditor({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.container, { minHeight }]}
-    >
+    <View style={styles.container}>
+      {/* Toolbar on TOP */}
+      {editable && (
+        <View style={[styles.toolbarWrapper, { backgroundColor: c.cardBg || '#fff' }]}>
+          <RichToolbar
+            editor={richText}
+            style={[styles.toolbar, { backgroundColor: c.cardBg || '#fff' }]}
+            flatContainerStyle={styles.toolbarFlat}
+            selectedIconTint={c.blue || '#4A90D9'}
+            iconTint={c.textSecondary || '#666'}
+            disabledIconTint="#CCC"
+            unselectedButtonStyle={styles.toolBtn}
+            actions={[
+              actions.setBold,
+              actions.setItalic,
+              actions.setUnderline,
+              actions.heading1,
+              actions.heading2,
+              actions.insertBulletsList,
+              actions.insertOrderedList,
+              actions.insertLink,
+              actions.blockquote,
+              actions.code,
+              actions.undo,
+              actions.redo,
+            ]}
+          />
+        </View>
+      )}
+      {/* Editor fills remaining space */}
       <View style={[styles.editorWrapper, { borderColor: c.border || '#DDD' }]}>
         <RichEditor
           ref={richText}
@@ -130,54 +158,44 @@ export default function MarkdownEditor({
           editorInitializedCallback={handleEditorInit}
         />
       </View>
-      {editable && (
-        <RichToolbar
-          editor={richText}
-          style={[styles.toolbar, { backgroundColor: c.cardBg || '#fff' }]}
-          selectedIconTint={c.blue || '#4A90D9'}
-          iconTint={c.textSecondary || '#666'}
-          disabledIconTint="#CCC"
-          unselectedButtonStyle={styles.toolBtn}
-          actions={[
-            actions.setBold,
-            actions.setItalic,
-            actions.setUnderline,
-            actions.heading1,
-            actions.heading2,
-            actions.insertBulletsList,
-            actions.insertOrderedList,
-            actions.insertLink,
-            actions.blockquote,
-            actions.code,
-            actions.undo,
-            actions.redo,
-          ]}
-        />
-      )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     borderRadius: 10,
     overflow: 'hidden',
   },
-  editorWrapper: {
+  toolbarWrapper: {
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     borderWidth: 1,
-    borderRadius: 10,
+    borderBottomWidth: 0,
+    borderColor: '#DDD',
+  },
+  toolbar: {
+    borderWidth: 0,
+    paddingVertical: 2,
+    height: 44,
+  },
+  toolbarFlat: {
+    flexGrow: 0,
+  },
+  toolbarDivider: {
+    height: 1,
+    backgroundColor: '#DDD',
+  },
+  editorWrapper: {
+    flex: 1,
+    borderWidth: 1,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
     overflow: 'hidden',
-    minHeight: 200,
   },
   editor: {
     flex: 1,
-    minHeight: 200,
-  },
-  toolbar: {
-    marginTop: 8,
-    borderRadius: 10,
-    borderWidth: 0,
-    paddingVertical: 4,
   },
   toolBtn: {
     marginHorizontal: 2,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, useWindowDimensions,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
@@ -21,7 +21,6 @@ export default function AddContentScreen() {
   const { t } = useTranslation();
   const apiClient = useApiClient();
   const c = useColors();
-  const { height: winH } = useWindowDimensions();
 
   const [stage, setStage] = useState<Stage>('input');
   const [editingContent, setEditingContent] = useState('');
@@ -140,78 +139,73 @@ export default function AddContentScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView
-        style={[styles.container, { backgroundColor: c.bg }]}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={stage === 'editing' ? { flexGrow: 1 } : undefined}
-      >
-        {stage === 'input' && (
-          <>
-            <Text style={[styles.title, { color: c.textPrimary }]}>{t('add.title')}</Text>
-            <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-              {t('add.subtitle')}
-            </Text>
-            <AddContentForm onSubmit={handleSubmit} isProcessing={false} />
-          </>
-        )}
-
-        {stage === 'editing' && (
-          <View style={{ flex: 1, minHeight: winH - 120 }}>
-            {/* Header */}
-            <View style={styles.editorHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.editorTitle, { color: c.textPrimary }]}>
-                  Review & Edit Content
-                </Text>
-                <Text style={[styles.editorSubtitle, { color: c.textSecondary }]}>
-                  Edit your content, then save to generate questions.
-                </Text>
-              </View>
-              <TouchableOpacity onPress={handleBackToInput}>
-                <Text style={[styles.cancelBtn, { color: c.blue }]}>Cancel</Text>
-              </TouchableOpacity>
+      {stage === 'editing' ? (
+        /* Editing: flex layout to fill screen */
+        <View style={[styles.container, { backgroundColor: c.bg, flex: 1 }]}>
+          {/* Header */}
+          <View style={styles.editorHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.editorTitle, { color: c.textPrimary }]}>
+                Review & Edit Content
+              </Text>
+              <Text style={[styles.editorSubtitle, { color: c.textSecondary }]}>
+                Edit your content, then save to generate questions.
+              </Text>
             </View>
-
-            {/* Toolbar preview hint */}
-            <Text style={[styles.editorHint, { color: c.textSecondary }]}>
-              Use the toolbar to format text (bold, headings, lists, etc.)
-            </Text>
-
-            {/* Editor */}
-            <View style={styles.editorWrapper}>
-              <MarkdownEditor
-                value={editingContent}
-                onChange={setEditingContent}
-                placeholder="Edit your content before generating questions..."
-                minHeight={Math.max(300, winH - 300)}
-              />
-            </View>
-
-            {/* Save button */}
-            <View style={[styles.saveBar, { borderTopColor: c.border }]}>
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: c.blue }]}
-                onPress={handleSaveAndGenerate}
-              >
-                <Text style={styles.saveBtnText}>
-                  Save & Generate Questions
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={handleBackToInput}>
+              <Text style={[styles.cancelBtn, { color: c.blue }]}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        {stage === 'processing' && (
-          <View style={styles.processingContainer}>
-            <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
-              {t('add.processingTitle')}
-            </Text>
-            <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
-              {t('add.processingDetail', { count: questionsPerContent })}
-            </Text>
+          {/* Editor fills remaining space */}
+          <View style={styles.editorFlexWrapper}>
+            <MarkdownEditor
+              value={editingContent}
+              onChange={setEditingContent}
+              placeholder="Edit your content before generating questions..."
+            />
           </View>
-        )}
-      </ScrollView>
+
+          {/* Save button */}
+          <View style={[styles.saveBar, { borderTopColor: c.border }]}>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: c.blue }]}
+              onPress={handleSaveAndGenerate}
+            >
+              <Text style={styles.saveBtnText}>
+                Save & Generate Questions
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        /* Input / Processing: ScrollView */
+        <ScrollView
+          style={[styles.container, { backgroundColor: c.bg }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {stage === 'input' && (
+            <>
+              <Text style={[styles.title, { color: c.textPrimary }]}>{t('add.title')}</Text>
+              <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+                {t('add.subtitle')}
+              </Text>
+              <AddContentForm onSubmit={handleSubmit} isProcessing={false} />
+            </>
+          )}
+
+          {stage === 'processing' && (
+            <View style={styles.processingContainer}>
+              <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
+                {t('add.processingTitle')}
+              </Text>
+              <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
+                {t('add.processingDetail', { count: questionsPerContent })}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -231,6 +225,11 @@ const styles = StyleSheet.create({
   editorHint: {
     fontSize: 12, paddingHorizontal: 16, paddingBottom: 4,
     lineHeight: 16,
+  },
+  editorFlexWrapper: {
+    flex: 1,
+    marginHorizontal: 12,
+    marginBottom: 8,
   },
   editorWrapper: {
     flex: 1,
