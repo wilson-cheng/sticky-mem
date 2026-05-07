@@ -415,11 +415,11 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logoCircle: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 40, height: 40, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
   logoEmoji: { fontSize: 20 },
-  logoImage: { width: 22, height: 22, borderRadius: 4 },
+  logoImage: { width: 32, height: 32, borderRadius: 6 },
   appName: { fontSize: 28, fontWeight: '800' },
   settingsIcon: { fontSize: 24 },
   loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
