@@ -229,7 +229,8 @@ const styles = StyleSheet.create({
   editorFlexWrapper: {
     flex: 1,
     marginHorizontal: 12,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 4,
   },
   editorWrapper: {
     flex: 1,
@@ -238,7 +239,8 @@ const styles = StyleSheet.create({
   },
   saveBar: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
     borderTopWidth: 1,
   },
   saveBtn: {
