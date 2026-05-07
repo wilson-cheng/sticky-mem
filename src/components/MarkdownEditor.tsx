@@ -77,17 +77,19 @@ export default function MarkdownEditor({
   const [editorReady, setEditorReady] = useState(false);
   const [contentSet, setContentSet] = useState(false);
 
-  // Web fallback: use a native <textarea> to avoid iframe scroll/focus issues
+  // Web fallback: uncontrolled <textarea> to avoid cursor-jump on re-render.
+  // Uses defaultValue + key remount instead of controlled value prop.
   if (Platform.OS === 'web') {
     return (
       <textarea
-        value={value}
+        defaultValue={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={!editable}
         style={{
           width: '100%',
-          minHeight,
+          height: '100%',
+          minHeight: '200px',
           padding: 12,
           fontSize: 16,
           lineHeight: 1.6,
@@ -96,9 +98,10 @@ export default function MarkdownEditor({
           backgroundColor: c.inputBg || '#F9F9F9',
           color: c.textPrimary || '#333',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          resize: 'vertical',
+          resize: 'none',
           outline: 'none',
           boxSizing: 'border-box',
+          overflowY: 'auto',
         }}
       />
     );

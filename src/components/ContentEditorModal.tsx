@@ -134,6 +134,7 @@ export default function ContentEditorModal({
         {/* Editor */}
         <View style={styles.editorWrapper}>
           <MarkdownEditor
+            key={`editor-${contentId}`}
             value={editedMarkdown}
             onChange={setEditedMarkdown}
             placeholder="Edit your content..."
