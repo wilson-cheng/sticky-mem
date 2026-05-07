@@ -35,6 +35,11 @@ export default function QuestionCard({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const isTransitioning = useRef(false);
 
+  const clearTimers = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
+  }, []);
+
   const advanceWithSlide = useCallback(() => {
     if (isTransitioning.current) return;
     isTransitioning.current = true;
@@ -64,11 +69,6 @@ export default function QuestionCard({
       toValue: 0, friction: 9, tension: 50, useNativeDriver: true,
     }).start();
   }, [question.id, correctAutoAdvanceMs]);
-
-  const clearTimers = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (autoAdvanceTimerRef.current) clearTimeout(autoAdvanceTimerRef.current);
-  }, []);
 
   const handleSelectOption = (option: string) => {
     if (cardState !== 'answering') return;
