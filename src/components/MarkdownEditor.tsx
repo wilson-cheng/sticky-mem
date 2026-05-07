@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
 
@@ -212,7 +212,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
-    overflow: 'hidden',
+    ...Platform.select({
+      web: { overflowY: 'auto' as const },
+      default: { overflow: 'hidden' as const },
+    }),
   },
   editor: {
     flex: 1,

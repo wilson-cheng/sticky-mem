@@ -49,6 +49,34 @@ export default function ContentEditorModal({
     }
   }, [visible, markdown]);
 
+  const handleCancel = useCallback(() => {
+    if (editedMarkdown === markdown) {
+      onClose();
+      return;
+    }
+    Alert.alert(
+      'Unsaved Changes',
+      'Save your changes before closing?',
+      [
+        { text: 'No', style: 'destructive', onPress: onClose },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await onSave(editedMarkdown);
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Failed to save');
+            } finally {
+              setSaving(false);
+              onClose();
+            }
+          },
+        },
+      ]
+    );
+  }, [editedMarkdown, markdown, onSave, onClose]);
+
   const handleSave = useCallback(async () => {
     if (editedMarkdown === markdown) {
       onClose();
@@ -94,12 +122,12 @@ export default function ContentEditorModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onRequestClose={handleCancel}
     >
       <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: c.border }]}>
-          <TouchableOpacity onPress={onClose} disabled={saving}>
+          <TouchableOpacity onPress={handleCancel} disabled={saving}>
             <Text style={[styles.closeBtn, { color: c.blue }]}>Cancel</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
