@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
@@ -26,6 +26,20 @@ export default function AddContentScreen() {
   const [editingContent, setEditingContent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState<{ title: string; count: number } | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardWillHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
   const multipleChoiceOnly = useSettingsStore((s) => s.multipleChoiceOnly);
 
@@ -167,7 +181,7 @@ export default function AddContentScreen() {
           </View>
 
           {/* Save button */}
-          <View style={[styles.saveBar, { borderTopColor: c.border }]}>
+          <View style={[styles.saveBar, { borderTopColor: c.border, paddingBottom: keyboardHeight + (Platform.OS === 'ios' ? 20 : 12) }]}>
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: c.blue }]}
               onPress={handleSaveAndGenerate}
