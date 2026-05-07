@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useColors } from '../theme/useColors';
 
@@ -65,7 +65,7 @@ function markdownToHtml(md: string): string {
   return html;
 }
 
-export default function MarkdownEditor({
+export default React.memo(function MarkdownEditor({
   value,
   onChange,
   placeholder = 'Edit your content...',
@@ -77,38 +77,9 @@ export default function MarkdownEditor({
   const [editorReady, setEditorReady] = useState(false);
   const [contentSet, setContentSet] = useState(false);
 
-  // Web fallback: uncontrolled <textarea> to avoid cursor-jump on re-render.
-  // Uses defaultValue + key remount instead of controlled value prop.
-  if (Platform.OS === 'web') {
-    return (
-      <textarea
-        defaultValue={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={!editable}
-        style={{
-          width: '100%',
-          height: '100%',
-          minHeight: '200px',
-          padding: 12,
-          fontSize: 16,
-          lineHeight: 1.6,
-          border: `1px solid ${c.border || '#DDD'}`,
-          borderRadius: 8,
-          backgroundColor: c.inputBg || '#F9F9F9',
-          color: c.textPrimary || '#333',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          resize: 'none',
-          outline: 'none',
-          boxSizing: 'border-box',
-          overflowY: 'auto',
-        }}
-      />
-    );
-  }
-
-  // Convert markdown to HTML
-  const html = React.useMemo(() => markdownToHtml(value), [value]);
+  // Convert markdown to HTML — runs once (mount only) due to React.memo + never-update.
+  // Content switching is handled by key prop in ContentEditorModal.
+  const html = React.useMemo(() => markdownToHtml(value), []);
 
   // Once the editor WebView is ready, inject the content
   useEffect(() => {
@@ -142,7 +113,7 @@ export default function MarkdownEditor({
     color: c.textPrimary || '#333',
     placeholderColor: c.textSecondary || '#999',
     caretColor: c.blue || '#4A90D9',
-    contentCSSText: `font-size: 16px; line-height: 1.6; padding: 8px; min-height: ${Math.max(200, minHeight - 80)}px;`,
+    contentCSSText: `font-size: 16px; line-height: 1.6; padding: 8px; min-height: ${Math.max(200, minHeight - 80)}px; overflow-y: auto;`,
   };
 
   return (
@@ -190,7 +161,7 @@ export default function MarkdownEditor({
       </View>
     </View>
   );
-}
+}, () => true); // Never re-render from prop changes — editor is uncontrolled via setContentHTML
 
 const styles = StyleSheet.create({
   container: {
