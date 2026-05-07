@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDatabase } from '../src/hooks/useDatabase';
 import { useSchedule } from '../src/hooks/useSchedule';
@@ -22,12 +22,12 @@ export default function HomeScreen() {
   const c = useColors();
   const [seeding, setSeeding] = useState(false);
 
-  // ─── Onboarding redirect ─── //
-  useEffect(() => {
-    if (isHydrated && !hasSeenOnboarding) {
-      router.replace('/onboarding');
-    }
-  }, [isHydrated, hasSeenOnboarding, router]);
+  // ─── Onboarding redirect ───
+  // Use declarative Redirect instead of imperative router.replace to avoid
+  // "navigation before layout mounts" errors
+  if (isHydrated && !hasSeenOnboarding) {
+    return <Redirect href="/onboarding" />;
+  }
 
   const handleSeedDemo = useCallback(async () => {
     if (!repo || seeding) return;
