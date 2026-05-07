@@ -37,7 +37,7 @@ function markdownToHtml(md: string): string {
   }
 }
 
-export default function MarkdownEditor({
+export default React.memo(function MarkdownEditor({
   value,
   onChange,
   placeholder = 'Edit your content...',
@@ -105,7 +105,7 @@ export default function MarkdownEditor({
   }
 
   return (
-    <View style={[styles.container, { minHeight }]}>
+    <View style={[styles.container, { flex: 1, minHeight }]}>
       {/* Toolbar */}
       <div style={tbStyles.toolbar}>
         <ToolbarButton
@@ -163,11 +163,11 @@ export default function MarkdownEditor({
         />
       </div>
 
-      {/* Editor content area */}
+      {/* Editor content area — flex:1 constrains height, overflowY:auto enables scroll */}
       <div
         style={{
           ...edStyles.editorArea,
-          minHeight: minHeight - 44,
+          flex: 1,
           ...(editable ? {} : { pointerEvents: 'none', opacity: 0.6 }),
         }}
       >
@@ -175,10 +175,12 @@ export default function MarkdownEditor({
       </div>
     </View>
   );
-}
+}, () => true); // Never re-render — tiptap manages its own DOM
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    flexDirection: 'column',
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
@@ -234,6 +236,7 @@ const edStyles: Record<string, React.CSSProperties> = {
   editorArea: {
     padding: '12px 16px',
     overflowY: 'auto',
+    minHeight: 0,
   },
   editorContent: {
     outline: 'none',
