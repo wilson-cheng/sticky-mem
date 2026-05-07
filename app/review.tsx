@@ -148,6 +148,7 @@ export default function ReviewScreen() {
         date: today,
         totalReviewed: (todayStats?.totalReviewed ?? 0) + 1,
         correctCount: (todayStats?.correctCount ?? 0) + (grade >= 3 ? 1 : 0),
+        accuracy: ((todayStats?.correctCount ?? 0) + (grade >= 3 ? 1 : 0)) / ((todayStats?.totalReviewed ?? 0) + 1),
       });
 
       setStats((s) => ({
@@ -196,6 +197,7 @@ export default function ReviewScreen() {
           date: today,
           totalReviewed: (todayStats?.totalReviewed ?? 0) + 1,
           correctCount: todayStats?.correctCount ?? 0,
+          accuracy: (todayStats?.correctCount ?? 0) / ((todayStats?.totalReviewed ?? 0) + 1),
         });
 
         setStats((s) => ({ correct: s.correct, total: s.total + 1 }));
@@ -252,15 +254,31 @@ export default function ReviewScreen() {
   const goHome = () => router.dismissAll();
 
   if (sessionDone && currentIndex >= reviewQueue.length) {
+    const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+    const countLabel = stats.total === 1 ? 'concept' : 'concepts';
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <Text style={styles.doneIcon}>🎉</Text>
-        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.sessionComplete')}</Text>
-        <Text style={[styles.doneStats, { color: c.textSecondary }]}>
-          {stats.correct} / {stats.total} {t('review.correct')}
-          {stats.total > 0 ? ` (${Math.round((stats.correct / stats.total) * 100)}%)` : ''}
+        <Text style={styles.doneCelebration}>🧠</Text>
+        <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.sessionTitle')}</Text>
+        <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>
+          {t('review.sessionSubtitle', { count: stats.total, count_label: countLabel })}
         </Text>
-        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.accent }]} onPress={goHome}>
+        <View style={[styles.doneStatsRow]}>
+          <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
+            <Text style={[styles.doneStatValue, { color: c.accent }]}>{stats.correct}/{stats.total}</Text>
+            <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.correct')}</Text>
+          </View>
+          <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
+            <Text style={[styles.doneStatValue, { color: accuracy >= 80 ? '#4CAF50' : '#FF9800' }]}>
+              {accuracy}%
+            </Text>
+            <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.sessionAccuracy')}</Text>
+          </View>
+        </View>
+        <Text style={styles.doneFireEmoji}>
+          {accuracy >= 90 ? '🔥🔥🔥' : accuracy >= 70 ? '🔥🔥' : '🔥'}
+        </Text>
+        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.blue }]} onPress={goHome}>
           <Text style={styles.homeBtnText}>{t('review.backToHome')}</Text>
         </TouchableOpacity>
       </View>
@@ -270,7 +288,7 @@ export default function ReviewScreen() {
   if (reviewQueue.length === 0) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <Text style={styles.doneIcon}>✅</Text>
+        <Text style={styles.doneCelebration}>✅</Text>
         <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{t('review.noCardsDue')}</Text>
         <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>{t('review.noCardsSubtitle')}</Text>
         <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.accent }]} onPress={goHome}>
@@ -339,10 +357,17 @@ const styles = StyleSheet.create({
   progressContainer: { paddingHorizontal: 16, marginBottom: 8 },
   progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#6C63FF', borderRadius: 3 },
-  doneIcon: { fontSize: 64, marginBottom: 16 },
-  doneTitle: { fontSize: 24, fontWeight: '800', marginBottom: 8 },
-  doneStats: { fontSize: 16, marginBottom: 24 },
-  doneSubtitle: { fontSize: 14, marginBottom: 24, textAlign: 'center' },
+  doneCelebration: { fontSize: 72, marginBottom: 12 },
+  doneTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
+  doneSubtitle: { fontSize: 15, marginBottom: 24, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
+  doneStatsRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
+  doneStatBox: {
+    borderRadius: 16, padding: 20, alignItems: 'center',
+    minWidth: 120,
+  },
+  doneStatValue: { fontSize: 32, fontWeight: '800' },
+  doneStatLabel: { fontSize: 13, marginTop: 4 },
+  doneFireEmoji: { fontSize: 28, marginBottom: 28 },
   homeBtn: {
     borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14,
   },

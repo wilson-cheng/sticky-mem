@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Keyboard,
+  KeyboardAvoidingView, Platform, Alert, Keyboard, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
@@ -40,8 +40,48 @@ export default function AddContentScreen() {
       hideSub.remove();
     };
   }, []);
+
   const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
   const multipleChoiceOnly = useSettingsStore((s) => s.multipleChoiceOnly);
+
+  // Processing animation
+  const processingSteps = [
+    t('add.processingStep'),
+    t('add.processingStep2'),
+    t('add.processingStep3'),
+  ];
+  const [currentStep, setCurrentStep] = useState(0);
+  const stepOpacity = useRef(new Animated.Value(0)).current;
+  const successScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (stage === 'processing') {
+      setCurrentStep(0);
+      stepOpacity.setValue(1);
+    }
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage !== 'processing') return;
+    const timer = setTimeout(() => {
+      if (currentStep < processingSteps.length - 1) {
+        setCurrentStep((s) => s + 1);
+        Animated.sequence([
+          Animated.timing(stepOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+          Animated.timing(stepOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]).start();
+      }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [currentStep, stage]);
+
+  useEffect(() => {
+    if (stage === 'success') {
+      Animated.spring(successScale, {
+        toValue: 1, friction: 4, tension: 40, useNativeDriver: true,
+      }).start();
+    }
+  }, [stage]);
 
   // Step 1: User submitted text/URL → move to editing stage
   const handleSubmit = async (input: string) => {
@@ -115,34 +155,36 @@ export default function AddContentScreen() {
   if (stage === 'success' && success) {
     return (
       <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
-        <Text style={styles.successIcon}>✅</Text>
-        <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
-        <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
-        <View style={[styles.successCountBox, { backgroundColor: c.successBg }]}>
-          <Text style={styles.successCountNum}>{success.count}</Text>
-          <Text style={styles.successCountLabel}>{t('add.questionsGenerated')}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.reviewButton, { backgroundColor: c.blue }]}
-          onPress={() => {
-            setSuccess(null);
-            setStage('input');
-            router.dismissAll();
-            setTimeout(() => router.push('/review'), 50);
-          }}
-        >
-          <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.homeButton}
-          onPress={() => {
-            setSuccess(null);
-            setStage('input');
-            router.replace('/');
-          }}
-        >
-          <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: successScale }], alignItems: 'center' }}>
+          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
+          <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
+          <View style={[styles.successCountBox, { backgroundColor: c.successBg }]}>
+            <Text style={styles.successCountNum}>{success.count}</Text>
+            <Text style={styles.successCountLabel}>{t('add.questionsGenerated')}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.reviewButton, { backgroundColor: c.blue }]}
+            onPress={() => {
+              setSuccess(null);
+              setStage('input');
+              router.dismissAll();
+              setTimeout(() => router.push('/review'), 50);
+            }}
+          >
+            <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.homeButton}
+            onPress={() => {
+              setSuccess(null);
+              setStage('input');
+              router.replace('/');
+            }}
+          >
+            <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     );
   }
@@ -210,9 +252,29 @@ export default function AddContentScreen() {
 
             {stage === 'processing' && (
               <View style={styles.processingContainer}>
+                <Text style={styles.processingSpinner}>🧠</Text>
                 <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
                   {t('add.processingTitle')}
                 </Text>
+                <Animated.View style={{ opacity: stepOpacity }}>
+                  <Text style={[styles.processingStepText, { color: c.textSecondary }]}>
+                    {processingSteps[currentStep]}
+                  </Text>
+                </Animated.View>
+                <View style={styles.processingDots}>
+                  {processingSteps.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        {
+                          backgroundColor: i <= currentStep ? c.accent : c.border,
+                          width: i <= currentStep ? 24 : 8,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
                 <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
                   {t('add.processingDetail', { count: questionsPerContent })}
                 </Text>
@@ -270,29 +332,37 @@ const styles = StyleSheet.create({
   },
   // Processing
   processingContainer: {
-    padding: 32,
+    padding: 48,
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
   },
-  processingTitle: { fontSize: 16, fontWeight: '600' },
-  processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  processingSpinner: { fontSize: 48, marginBottom: 4 },
+  processingTitle: { fontSize: 18, fontWeight: '700' },
+  processingStepText: { fontSize: 15, textAlign: 'center', lineHeight: 22, fontStyle: 'italic' },
+  processingDots: {
+    flexDirection: 'row', gap: 8, alignItems: 'center', marginVertical: 8,
+  },
+  dot: {
+    height: 8, borderRadius: 4,
+  },
+  processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18, opacity: 0.7 },
   // Success
   successContainer: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     padding: 32,
   },
-  successIcon: { fontSize: 64, marginBottom: 16 },
-  successTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8 },
+  successIcon: { fontSize: 72, marginBottom: 16 },
+  successTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
   successSubtitle: {
     fontSize: 16, textAlign: 'center',
     fontStyle: 'italic', marginBottom: 24, lineHeight: 22,
   },
   successCountBox: {
-    borderRadius: 16, padding: 20,
+    borderRadius: 20, padding: 24,
     alignItems: 'center', marginBottom: 32, width: '100%',
   },
-  successCountNum: { fontSize: 48, fontWeight: '800', color: '#2E7D32' },
-  successCountLabel: { fontSize: 14, color: '#388E3C', marginTop: 4 },
+  successCountNum: { fontSize: 56, fontWeight: '800', color: '#2E7D32' },
+  successCountLabel: { fontSize: 15, color: '#388E3C', marginTop: 4 },
   reviewButton: {
     borderRadius: 12, paddingVertical: 16,
     paddingHorizontal: 48, width: '100%', alignItems: 'center', marginBottom: 12,
