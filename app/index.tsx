@@ -96,8 +96,27 @@ export default function HomeScreen() {
     return '💪';
   };
 
+  // ─── LOADING STATE ─── //
+  if (loading && totalQuestions === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: c.bg }]}>
+        <View style={[styles.header, { paddingTop: 0 }]}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.logoCircle, { backgroundColor: c.accent }]}>
+              <Text style={styles.logoEmoji}>🧠</Text>
+            </View>
+            <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
+          </View>
+        </View>
+        <View style={styles.loadingCentered}>
+          <ActivityIndicator size="large" color={c.blue} />
+        </View>
+      </View>
+    );
+  }
+
   // ─── EMPTY STATE ─── //
-  if (!loading && totalQuestions === 0 && isHydrated) {
+  if (!loading && totalQuestions === 0) {
     return (
       <View style={[styles.container, { backgroundColor: c.bg }]}>
         <ScrollView contentContainerStyle={styles.content}>
@@ -355,6 +374,7 @@ const styles = StyleSheet.create({
   logoEmoji: { fontSize: 20 },
   appName: { fontSize: 28, fontWeight: '800' },
   settingsIcon: { fontSize: 24 },
+  loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   // ─── Empty State ─── //
   heroSection: {
     alignItems: 'center', paddingTop: 20,
