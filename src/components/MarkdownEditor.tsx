@@ -76,6 +76,7 @@ export default React.memo(function MarkdownEditor({
   const c = useColors();
   const [editorReady, setEditorReady] = useState(false);
   const [contentSet, setContentSet] = useState(false);
+  const changeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Convert markdown to HTML — runs once (mount only) due to React.memo + never-update.
   // Content switching is handled by key prop in ContentEditorModal.
@@ -93,20 +94,38 @@ export default React.memo(function MarkdownEditor({
     }
   }, [editorReady, contentSet, html]);
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (changeTimerRef.current) clearTimeout(changeTimerRef.current);
+    };
+  }, []);
+
   const handleEditorInit = useCallback(() => {
     setEditorReady(true);
   }, []);
 
-  const handleChange = useCallback(async (html: string) => {
-    try {
-      const td = await getTurndown();
-      const md = td.turndown(html);
-      onChange(md);
-    } catch {
-      // If turndown fails, just pass the raw HTML
-      onChange(html);
-    }
-  }, [onChange]);
+  // Debounce onChange to prevent cursor jump — iframe postMessage + async conversion
+  // resets selection on every state update. Batching keystrokes via 300ms debounce
+  // reduces state update frequency while keeping "Save" button reactivity.
+  const handleChange = useCallback(
+    (rawHtml: string) => {
+      if (changeTimerRef.current) {
+        clearTimeout(changeTimerRef.current);
+      }
+      changeTimerRef.current = setTimeout(async () => {
+        try {
+          const td = await getTurndown();
+          const md = td.turndown(rawHtml);
+          onChange(md);
+        } catch {
+          // If turndown fails, just pass the raw HTML
+          onChange(rawHtml);
+        }
+      }, 300);
+    },
+    [onChange],
+  );
 
   const editorStyle = {
     backgroundColor: c.inputBg || '#F9F9F9',
@@ -154,7 +173,6 @@ export default React.memo(function MarkdownEditor({
           placeholder={placeholder}
           editorStyle={editorStyle}
           disabled={!editable}
-          useContainer={false}
           style={styles.editor}
           editorInitializedCallback={handleEditorInit}
         />
