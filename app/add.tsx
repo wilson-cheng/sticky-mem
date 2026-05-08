@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Keyboard, Animated,
+  KeyboardAvoidingView, Platform, Keyboard, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
 import MarkdownEditor from '../src/components/MarkdownEditor';
 import { useApiClient } from '../src/hooks/useApiClient';
-import { digestContent } from '../src/llm/digest';
-import { generateQuestions } from '../src/llm/questions';
+import { generateContent } from '../src/llm/generate';
 import { initDatabase } from '../src/hooks/useDatabase';
 import { useSettingsStore } from '../src/store/settings';
 import { useColors } from '../src/theme/useColors';
@@ -26,6 +25,7 @@ export default function AddContentScreen() {
   const [stage, setStage] = useState<Stage>('input');
   const [editingContent, setEditingContent] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [success, setSuccess] = useState<{
     title: string;
     count: number;
@@ -50,78 +50,16 @@ export default function AddContentScreen() {
   const questionsPerContent = useSettingsStore((s) => s.questionsPerContent);
   const multipleChoiceOnly = useSettingsStore((s) => s.multipleChoiceOnly);
 
-  // Processing animation
-  const processingSteps = [
-    t('add.processingStep'),
-    t('add.processingStep2'),
-    t('add.processingStep3'),
-  ];
-  const [currentStep, setCurrentStep] = useState(0);
-  const stepOpacity = useRef(new Animated.Value(0)).current;
-  const successScale = useRef(new Animated.Value(0)).current;
-
-  // Emoji burst
-  const emojiAnims = useRef(
-    Array.from({ length: 8 }, () => ({
-      x: new Animated.Value(0),
-      y: new Animated.Value(0),
-      scale: new Animated.Value(0),
-      opacity: new Animated.Value(0),
+  // Emoji burst (success animation)
+  const [burstAnims] = useState(() =>
+    Array.from({ length: 8 }, (_, i) => ({
+      key: `burst-${i}`,
+      emoji: ['🎉', '✨', '🌟', '⭐', '🔥', '💡', '🧠', '🎯'][i],
+      angle: (i / 8) * Math.PI * 2,
+      distance: 80 + Math.random() * 60,
     }))
-  ).current;
-  const burstEmojis = ['🎉', '✨', '🌟', '⭐', '🔥', '💡', '🧠', '🎯'];
-
-  useEffect(() => {
-    if (stage === 'processing') {
-      setCurrentStep(0);
-      stepOpacity.setValue(1);
-    }
-  }, [stage]);
-
-  useEffect(() => {
-    if (stage !== 'processing') return;
-    const timer = setTimeout(() => {
-      if (currentStep < processingSteps.length - 1) {
-        setCurrentStep((s) => s + 1);
-        Animated.sequence([
-          Animated.timing(stepOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
-          Animated.timing(stepOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-        ]).start();
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [currentStep, stage]);
-
-  useEffect(() => {
-    if (stage === 'success') {
-      Animated.spring(successScale, {
-        toValue: 1, friction: 4, tension: 40, useNativeDriver: true,
-      }).start();
-      // Emoji burst
-      emojiAnims.forEach((anim, i) => {
-        const angle = (i / emojiAnims.length) * Math.PI * 2;
-        const distance = 80 + Math.random() * 60;
-        anim.x.setValue(0);
-        anim.y.setValue(0);
-        anim.scale.setValue(0);
-        anim.opacity.setValue(1);
-        Animated.parallel([
-          Animated.spring(anim.x, {
-            toValue: Math.cos(angle) * distance, friction: 6, tension: 40, useNativeDriver: true,
-          }),
-          Animated.spring(anim.y, {
-            toValue: Math.sin(angle) * distance, friction: 6, tension: 40, useNativeDriver: true,
-          }),
-          Animated.spring(anim.scale, {
-            toValue: 1, friction: 5, tension: 60, delay: 50, useNativeDriver: true,
-          }),
-          Animated.timing(anim.opacity, {
-            toValue: 0, duration: 2000, delay: 1500, useNativeDriver: true,
-          }),
-        ]).start();
-      });
-    }
-  }, [stage]);
+  );
+  const [burstVisible, setBurstVisible] = useState(false);
 
   // Step 1: User submitted text/URL → move to editing stage
   const handleSubmit = async (input: string) => {
@@ -129,7 +67,7 @@ export default function AddContentScreen() {
     setStage('editing');
   };
 
-  // Step 2: User finished editing → digest + generate + save
+  // Step 2: User finished editing → single merged LLM call + save
   const handleSaveAndGenerate = async () => {
     if (!apiClient) {
       router.push('/settings');
@@ -143,26 +81,26 @@ export default function AddContentScreen() {
 
     setIsProcessing(true);
     setStage('processing');
+    setStatusMessage('Digesting content & generating questions...');
 
     try {
-      // Step 2a: Digest the edited content (extract title, summary, concepts)
-      const digest = await digestContent(apiClient, editingContent);
-
-      // Step 2b: Generate questions
-      const questions = await generateQuestions(
-        apiClient, digest.keyConcepts, digest.title,
-        questionsPerContent, multipleChoiceOnly
+      // Single merged API call (was 2 separate calls before)
+      const result = await generateContent(
+        apiClient, editingContent,
+        questionsPerContent, multipleChoiceOnly,
       );
 
-      // Step 2c: Save to database (store the EDITED markdown as rawText)
+      setStatusMessage('Saving to database...');
+
+      // Save to database
       const repo = await initDatabase();
       await repo.saveContentWithQuestions({
         sourceType: 'text',
-        title: digest.title,
-        rawText: editingContent, // ← store the user-edited markdown
-        summary: digest.summary,
-        key_concepts: digest.keyConcepts,
-        questions: questions.map((q) => ({
+        title: result.digest.title,
+        rawText: editingContent,
+        summary: result.digest.summary,
+        key_concepts: result.digest.keyConcepts,
+        questions: result.digest.questions.map((q) => ({
           type: q.type,
           question: q.question,
           correctAnswer: q.correctAnswer,
@@ -171,11 +109,18 @@ export default function AddContentScreen() {
         })),
       });
 
-      setSuccess({ title: digest.title, count: questions.length, summary: digest.summary, concepts: digest.keyConcepts });
+      setSuccess({
+        title: result.digest.title,
+        count: result.digest.questions.length,
+        summary: result.digest.summary,
+        concepts: result.digest.keyConcepts,
+      });
+      setBurstVisible(true);
       setStage('success');
     } catch (e: any) {
       setStage('editing');
       setIsProcessing(false);
+      setStatusMessage('');
       console.error('Content processing failed:', e);
       Alert.alert(
         'Processing Failed',
@@ -189,28 +134,46 @@ export default function AddContentScreen() {
     setStage('input');
     setEditingContent('');
     setIsProcessing(false);
+    setStatusMessage('');
   };
+
+  // ─── Processing Screen ─── //
+  const ProcessingScreen = () => (
+    <View style={styles.processingContainer}>
+      <ActivityIndicator size="large" color={c.accent} />
+      <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
+        {t('add.processingTitle')}
+      </Text>
+      <Text style={[styles.processingStepText, { color: c.textSecondary }]}>
+        {statusMessage}
+      </Text>
+      <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
+        {t('add.processingDetail', { count: questionsPerContent })}
+      </Text>
+    </View>
+  );
 
   // ─── Success Screen ─── //
   if (stage === 'success' && success) {
     return (
       <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
-        {emojiAnims.map((anim, i) => (
-          <Animated.Text
-            key={i}
-            style={[styles.burstEmoji, {
-              transform: [
-                { translateX: anim.x },
-                { translateY: anim.y },
-                { scale: anim.scale },
-              ],
-              opacity: anim.opacity,
-            }]}
-          >
-            {burstEmojis[i]}
-          </Animated.Text>
-        ))}
-        <Animated.View style={{ transform: [{ scale: successScale }], alignItems: 'center', width: '100%' }}>
+        {burstVisible && burstAnims.map((ba) => {
+          // Simple CSS-based burst (no Animated API complexity)
+          const tx = Math.cos(ba.angle) * ba.distance;
+          const ty = Math.sin(ba.angle) * ba.distance;
+          return (
+            <Text
+              key={ba.key}
+              style={[styles.burstEmoji, {
+                transform: `translate(${tx}px, ${ty}px) scale(1)`,
+                opacity: 0.6,
+              }]}
+            >
+              {ba.emoji}
+            </Text>
+          );
+        })}
+        <View style={{ alignItems: 'center', width: '100%' }}>
           <Text style={styles.successIcon}>🎉</Text>
           <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
           <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
@@ -258,7 +221,7 @@ export default function AddContentScreen() {
           >
             <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </View>
     );
   }
@@ -324,51 +287,7 @@ export default function AddContentScreen() {
               </>
             )}
 
-            {stage === 'processing' && (
-              <View style={styles.processingContainer}>
-                <Text style={styles.processingSpinner}>🧠</Text>
-                <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
-                  {t('add.processingTitle')}
-                </Text>
-                <Animated.View style={{ opacity: stepOpacity }}>
-                  <Text style={[styles.processingStepText, { color: c.textSecondary }]}>
-                    {processingSteps[currentStep]}
-                  </Text>
-                </Animated.View>
-                <View style={styles.timeline}>
-                  {processingSteps.map((step, i) => (
-                    <View key={i} style={styles.timelineRow}>
-                      <View style={styles.timelineNode}>
-                        {i < currentStep ? (
-                          <Text style={styles.timelineCheck}>✅</Text>
-                        ) : i === currentStep ? (
-                          <View style={[styles.timelineActive, { backgroundColor: c.accent }]} />
-                        ) : (
-                          <View style={[styles.timelinePending, { borderColor: c.border }]} />
-                        )}
-                        {i < processingSteps.length - 1 && (
-                          <View style={[styles.timelineLine, { backgroundColor: i < currentStep ? c.accent : c.border }]} />
-                        )}
-                      </View>
-                      <Animated.View style={i === currentStep ? { opacity: stepOpacity } : undefined}>
-                        <Text style={[
-                          styles.timelineLabel,
-                          {
-                            color: i <= currentStep ? c.textPrimary : c.textSecondary,
-                            fontWeight: i <= currentStep ? '600' : '400',
-                          },
-                        ]}>
-                          {step}
-                        </Text>
-                      </Animated.View>
-                    </View>
-                  ))}
-                </View>
-                <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
-                  {t('add.processingDetail', { count: questionsPerContent })}
-                </Text>
-              </View>
-            )}
+            {stage === 'processing' && <ProcessingScreen />}
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -388,20 +307,11 @@ const styles = StyleSheet.create({
   editorTitle: { fontSize: 20, fontWeight: '700', marginBottom: 2 },
   editorSubtitle: { fontSize: 13, lineHeight: 18 },
   cancelBtn: { fontSize: 15, fontWeight: '500', paddingLeft: 12, paddingTop: 4 },
-  editorHint: {
-    fontSize: 12, paddingHorizontal: 16, paddingBottom: 4,
-    lineHeight: 16,
-  },
   editorFlexWrapper: {
     flex: 1,
     marginHorizontal: 12,
     marginTop: 10,
     marginBottom: 4,
-  },
-  editorWrapper: {
-    flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 8,
   },
   saveBar: {
     paddingHorizontal: 16,
@@ -425,14 +335,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  processingSpinner: { fontSize: 48, marginBottom: 4 },
   processingTitle: { fontSize: 18, fontWeight: '700' },
-  processingStepText: { fontSize: 15, textAlign: 'center', lineHeight: 22, fontStyle: 'italic' },
-  processingDots: {
-    flexDirection: 'row', gap: 8, alignItems: 'center', marginVertical: 8,
-  },
-  dot: {
-    height: 8, borderRadius: 4,
+  processingStepText: {
+    fontSize: 15, textAlign: 'center', lineHeight: 22, fontStyle: 'italic',
   },
   processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18, opacity: 0.7 },
   // Success
@@ -446,12 +351,6 @@ const styles = StyleSheet.create({
     fontSize: 16, textAlign: 'center',
     fontStyle: 'italic', marginBottom: 24, lineHeight: 22,
   },
-  successCountBox: {
-    borderRadius: 20, padding: 24,
-    alignItems: 'center', marginBottom: 32, width: '100%',
-  },
-  successCountNum: { fontSize: 56, fontWeight: '800', color: '#2E7D32' },
-  successCountLabel: { fontSize: 15, color: '#388E3C', marginTop: 4 },
   reviewButton: {
     borderRadius: 12, paddingVertical: 16,
     paddingHorizontal: 48, width: '100%', alignItems: 'center', marginBottom: 12,
@@ -461,34 +360,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 48, alignItems: 'center',
   },
   homeButtonText: { fontSize: 15, fontWeight: '500' },
-  // Emoji burst
+  // Emoji burst (static, no Animated API overhead)
   burstEmoji: {
     position: 'absolute',
     fontSize: 28,
   },
-  // Timeline
-  timeline: {
-    marginVertical: 12, paddingHorizontal: 8, alignSelf: 'stretch',
-  },
-  timelineRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    minHeight: 48,
-  },
-  timelineNode: {
-    width: 28, alignItems: 'center',
-  },
-  timelineCheck: { fontSize: 16 },
-  timelineActive: {
-    width: 12, height: 12, borderRadius: 6, marginTop: 2,
-  },
-  timelinePending: {
-    width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 3,
-  },
-  timelineLine: {
-    position: 'absolute', top: 16, left: 13,
-    width: 2, height: 36,
-  },
-  timelineLabel: { fontSize: 14, lineHeight: 20, flex: 1, marginTop: 1 },
   // Success — summary + concept pills
   summarySection: {
     borderRadius: 16, padding: 16,
