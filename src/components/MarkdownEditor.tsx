@@ -179,6 +179,7 @@ export default React.memo(function MarkdownEditor({
           disabled={!editable}
           style={styles.editor}
           editorInitializedCallback={handleEditorInit}
+          scrollEnabled={true}
         />
       </View>
     </View>

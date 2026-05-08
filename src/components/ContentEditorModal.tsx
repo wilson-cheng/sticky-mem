@@ -121,7 +121,6 @@ export default function ContentEditorModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
       onRequestClose={handleCancel}
     >
       <View style={[styles.container, { backgroundColor: c.bg, paddingTop: insets.top }]}>
