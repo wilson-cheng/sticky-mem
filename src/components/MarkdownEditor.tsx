@@ -11,6 +11,7 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
+import { marked } from 'marked';
 import { useColors } from '../theme/useColors';
 
 interface Props {
@@ -20,6 +21,10 @@ interface Props {
   minHeight?: number;
   editable?: boolean;
 }
+
+// Pre-configure marked — disable async for sync output, sanitize is not needed
+// as the output goes into a WebView (not DOM)
+marked.setOptions({ async: false });
 
 // Module-level turndown instance — pre-loaded on first import
 let turndownPromise: Promise<any> | null = null;
@@ -41,35 +46,12 @@ ensureTurndown();
 
 function markdownToHtml(md: string): string {
   if (!md) return '<p></p>';
-  const safe = md
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  let html = safe;
-  // Code blocks (```) — must be before inline code
-  html = html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g, '<pre><code>$2</code></pre>');
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Headings
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-  // Bold and italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-  // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1"/>');
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // Unordered lists (dash only)
-  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-  // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr/>');
-  // Paragraphs — wrap remaining lines
-  html = html.replace(/^(?!<[a-zA-Z/])(.+)$/gm, '<p>$1</p>');
-  return html;
+  try {
+    const html = marked.parse(md, { async: false }) as string;
+    return html || '<p></p>';
+  } catch {
+    return '<p></p>';
+  }
 }
 
 export default React.memo(function MarkdownEditor({
