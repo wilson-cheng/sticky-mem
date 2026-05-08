@@ -8,7 +8,8 @@ import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
 import MarkdownEditor from '../src/components/MarkdownEditor';
 import { useApiClient } from '../src/hooks/useApiClient';
-import { generateContent } from '../src/llm/generate';
+import { digestContent } from '../src/llm/digest';
+import { generateQuestions } from '../src/llm/questions';
 import { initDatabase } from '../src/hooks/useDatabase';
 import { useSettingsStore } from '../src/store/settings';
 import { useColors } from '../src/theme/useColors';
@@ -81,26 +82,29 @@ export default function AddContentScreen() {
 
     setIsProcessing(true);
     setStage('processing');
-    setStatusMessage('Digesting content & generating questions...');
 
     try {
-      // Single merged API call (was 2 separate calls before)
-      const result = await generateContent(
-        apiClient, editingContent,
+      // Step 1: Digest content
+      setStatusMessage('Digesting content...');
+      const digest = await digestContent(apiClient, editingContent);
+
+      // Step 2: Generate questions from concepts
+      setStatusMessage('Generating questions...');
+      const questions = await generateQuestions(
+        apiClient, digest.keyConcepts, digest.title,
         questionsPerContent, multipleChoiceOnly,
       );
 
+      // Step 3: Save to database
       setStatusMessage('Saving to database...');
-
-      // Save to database
       const repo = await initDatabase();
       await repo.saveContentWithQuestions({
         sourceType: 'text',
-        title: result.digest.title,
+        title: digest.title,
         rawText: editingContent,
-        summary: result.digest.summary,
-        key_concepts: result.digest.keyConcepts,
-        questions: result.digest.questions.map((q) => ({
+        summary: digest.summary,
+        key_concepts: digest.keyConcepts,
+        questions: questions.map((q) => ({
           type: q.type,
           question: q.question,
           correctAnswer: q.correctAnswer,
@@ -110,16 +114,15 @@ export default function AddContentScreen() {
       });
 
       setSuccess({
-        title: result.digest.title,
-        count: result.digest.questions.length,
-        summary: result.digest.summary,
-        concepts: result.digest.keyConcepts,
+        title: digest.title,
+        count: questions.length,
+        summary: digest.summary,
+        concepts: digest.keyConcepts,
       });
       setBurstVisible(true);
       setStage('success');
     } catch (e: any) {
       setStage('editing');
-      setIsProcessing(false);
       setStatusMessage('');
       console.error('Content processing failed:', e);
       Alert.alert(
@@ -127,6 +130,8 @@ export default function AddContentScreen() {
         `The content was too long or the AI returned an invalid response.\n\n${e.message || 'Unknown error'}`,
         [{ text: 'OK' }],
       );
+    } finally {
+      setIsProcessing(false);
     }
   };
 
