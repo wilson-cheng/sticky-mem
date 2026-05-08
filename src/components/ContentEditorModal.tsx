@@ -41,11 +41,13 @@ export default function ContentEditorModal({
   const c = useColors();
   const [editedMarkdown, setEditedMarkdown] = useState(markdown);
   const [saving, setSaving] = useState(false);
+  const [modalOpenCount, setModalOpenCount] = useState(0);
 
   // Reset when opening with different content
   useEffect(() => {
     if (visible) {
       setEditedMarkdown(markdown);
+      setModalOpenCount(prev => prev + 1);
     }
   }, [visible, markdown]);
 
@@ -161,7 +163,7 @@ export default function ContentEditorModal({
         {/* Editor */}
         <View style={styles.editorWrapper}>
           <MarkdownEditor
-            key={`editor-${contentId}`}
+            key={`editor-${contentId}-${modalOpenCount}`}
             value={editedMarkdown}
             onChange={setEditedMarkdown}
             placeholder="Edit your content..."
