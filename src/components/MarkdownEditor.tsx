@@ -111,7 +111,7 @@ export default React.memo(function MarkdownEditor({
     backgroundColor: c.inputBg || '#F9F9F9',
     color: c.textPrimary || '#333',
     placeholderColor: c.textSecondary || '#999',
-    caretColor: c.blue || '#4A90D9',
+    caretColor: c.accent || '#7C4DFF',
     contentCSSText: `font-size: 16px; line-height: 1.6; padding: 8px; min-height: ${Math.max(200, minHeight - 80)}px; overflow-y: auto;`,
   };
 
@@ -124,7 +124,7 @@ export default React.memo(function MarkdownEditor({
             editor={richText}
             style={[styles.toolbar, { backgroundColor: c.cardBg || '#fff' }]}
             flatContainerStyle={styles.toolbarFlat}
-            selectedIconTint={c.blue || '#4A90D9'}
+            selectedIconTint={c.accent || '#7C4DFF'}
             iconTint={c.textSecondary || '#666'}
             disabledIconTint="#CCC"
             unselectedButtonStyle={styles.toolBtn}

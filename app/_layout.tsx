@@ -7,7 +7,7 @@ import { AlertThemeProvider } from '../src/components/AlertThemeProvider';
 
 export default function RootLayout() {
   const c = useColors();
-  const isDark = c.bg === '#121212';
+  const isDark = c.bg === '#1A1025';
 
   const screenOptions = useMemo(() => ({
     headerStyle: { backgroundColor: c.headerBg },

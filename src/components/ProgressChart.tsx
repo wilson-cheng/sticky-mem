@@ -67,11 +67,11 @@ const styles = StyleSheet.create({
   },
   barGroup: { alignItems: 'center', flex: 1 },
   bar: {
-    backgroundColor: '#4A90D9', borderRadius: 4,
+    backgroundColor: '#7C4DFF', borderRadius: 4,
   },
-  label: { fontSize: 9, color: '#888', marginTop: 4 },
+  label: { fontSize: 9, color: '#7A7A9A', marginTop: 4 },
   yAxis: { justifyContent: 'space-between', height: 160, paddingLeft: 4 },
-  yLabel: { fontSize: 10, color: '#AAA' },
+  yLabel: { fontSize: 10, color: '#7A7A9A' },
   emptyContainer: { padding: 32, alignItems: 'center' },
-  emptyText: { fontSize: 14, color: '#888', textAlign: 'center' },
+  emptyText: { fontSize: 14, color: '#7A7A9A', textAlign: 'center' },
 });

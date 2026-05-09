@@ -28,15 +28,15 @@ function LanguageSelector({
           key={o.value}
           style={[
             styles.optionChip,
-            { backgroundColor: colors.inputBg, borderColor: colors.border },
-            value === o.value && { backgroundColor: '#E8E0FF', borderColor: colors.accent },
+            { backgroundColor: colors.statBoxBg, borderColor: colors.border },
+            value === o.value && { backgroundColor: colors.accent, borderColor: colors.accent },
           ]}
           onPress={() => onChange(o.value)}
         >
           <Text style={[
             styles.optionChipText,
-            { color: colors.textSecondary },
-            value === o.value && { color: colors.accent, fontWeight: '700' },
+            { color: colors.textPrimary },
+            value === o.value && { color: '#fff', fontWeight: '700' },
           ]}>
             {o.label}
           </Text>
@@ -59,15 +59,15 @@ function ThemeSelector({
       <TouchableOpacity
         style={[
           styles.optionChip,
-          { backgroundColor: colors.inputBg, borderColor: colors.border },
-          value === 'light' && { backgroundColor: '#E8E0FF', borderColor: colors.accent },
+          { backgroundColor: colors.statBoxBg, borderColor: colors.border },
+          value === 'light' && { backgroundColor: colors.accent, borderColor: colors.accent },
         ]}
         onPress={() => onChange('light')}
       >
         <Text style={[
           styles.optionChipText,
-          { color: colors.textSecondary },
-          value === 'light' && { color: colors.accent, fontWeight: '700' },
+          { color: colors.textPrimary },
+          value === 'light' && { color: '#fff', fontWeight: '700' },
         ]}>
             ☀️ {t('settings.light')}
         </Text>
@@ -75,15 +75,15 @@ function ThemeSelector({
       <TouchableOpacity
         style={[
           styles.optionChip,
-          { backgroundColor: colors.inputBg, borderColor: colors.border },
-          value === 'dark' && { backgroundColor: '#E8E0FF', borderColor: colors.accent },
+          { backgroundColor: colors.statBoxBg, borderColor: colors.border },
+          value === 'dark' && { backgroundColor: colors.accent, borderColor: colors.accent },
         ]}
         onPress={() => onChange('dark')}
       >
         <Text style={[
           styles.optionChipText,
-          { color: colors.textSecondary },
-          value === 'dark' && { color: colors.accent, fontWeight: '700' },
+          { color: colors.textPrimary },
+          value === 'dark' && { color: '#fff', fontWeight: '700' },
         ]}>
             🌙 {t('settings.dark')}
         </Text>
@@ -170,7 +170,7 @@ export default function SettingsScreen() {
       )}
 
       <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: c.blue }, !localKey.trim() && styles.saveButtonDisabled]}
+        style={[styles.saveButton, { backgroundColor: c.accent }, !localKey.trim() && styles.saveButtonDisabled]}
         onPress={handleSave}
         disabled={!localKey.trim()}
       >
@@ -263,7 +263,7 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.dangerBtn, { backgroundColor: c.dangerBg, borderColor: '#FFCDD2' }]}
+        style={[styles.dangerBtn, { backgroundColor: c.dangerBg, borderColor: c.dangerBg }]}
         onPress={handleClearAll}
       >
         <Text style={[styles.dangerBtnText, { color: c.danger }]}>🗑️ {t('settings.clearAll')}</Text>

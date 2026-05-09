@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
 import MarkdownEditor from '../src/components/MarkdownEditor';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApiClient } from '../src/hooks/useApiClient';
 import { digestContent } from '../src/llm/digest';
 import { generateQuestions } from '../src/llm/questions';
@@ -161,7 +162,7 @@ export default function AddContentScreen() {
   // ─── Success Screen ─── //
   if (stage === 'success' && success) {
     return (
-      <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
+      <LinearGradient colors={[c.accent + '10', c.bg, c.bg]} locations={[0, 0.3, 1]} style={styles.successContainer}>
         {burstVisible && burstAnims.map((ba) => {
           // Simple CSS-based burst (no Animated API complexity)
           const tx = Math.cos(ba.angle) * ba.distance;
@@ -206,7 +207,7 @@ export default function AddContentScreen() {
             <Text style={[styles.countLabel, { color: c.textSecondary }]}>{t('add.questionsGenerated')}</Text>
           </View>
           <TouchableOpacity
-            style={[styles.reviewButton, { backgroundColor: c.blue }]}
+            style={[styles.reviewButton, { backgroundColor: c.accent }]}
             onPress={() => {
               setSuccess(null);
               setStage('input');
@@ -227,7 +228,7 @@ export default function AddContentScreen() {
             <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -247,7 +248,7 @@ export default function AddContentScreen() {
               </Text>
             </View>
             <TouchableOpacity onPress={handleBackToInput}>
-              <Text style={[styles.cancelBtn, { color: c.blue }]}>Cancel</Text>
+              <Text style={[styles.cancelBtn, { color: c.accent }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
 
@@ -263,7 +264,7 @@ export default function AddContentScreen() {
           {/* Save button */}
           <View style={[styles.saveBar, { borderTopColor: c.border }]}>
             <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: c.blue }]}
+              style={[styles.saveBtn, { backgroundColor: c.accent }]}
               onPress={handleSaveAndGenerate}
             >
               <Text style={styles.saveBtnText}>

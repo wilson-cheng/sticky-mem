@@ -5,6 +5,7 @@ import type { DailyStats } from '../src/types';
 import { useColors } from '../src/theme/useColors';
 import ProgressChart from '../src/components/ProgressChart';
 import { useTranslation } from '../src/i18n/useTranslation';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export default function ProgressScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.blue} />
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
@@ -56,32 +57,37 @@ export default function ProgressScreen() {
     <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
       {/* Hero */}
       {totalReviewed > 0 && (
-        <View style={[styles.heroCard, { backgroundColor: c.cardBg }]}>
+        <LinearGradient
+          colors={['#7C4DFF', '#B388FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
           <Text style={styles.heroEmoji}>
             {overallAccuracy >= 0.9 ? '🧠🔥' : overallAccuracy >= 0.7 ? '🧠' : '🌱'}
           </Text>
-          <Text style={[styles.heroText, { color: c.textPrimary }]}>
+          <Text style={[styles.heroText, { color: c.textOnPrimary }]}>
             {t('progress.hero', { accuracy: Math.round(overallAccuracy * 100) })}
           </Text>
           {streak > 0 && (
-            <Text style={[styles.streakText, { color: c.textSecondary }]}>
+            <Text style={[styles.streakText, { color: c.textOnPrimary }]}>
               {t('home.streakDays', { count: streak })}
             </Text>
           )}
-        </View>
+        </LinearGradient>
       )}
 
       {/* Stats Grid */}
       <View style={styles.statsRow}>
-        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+        <View style={[styles.statBox, { backgroundColor: c.cardBg }]}>
           <Text style={[styles.statNumber, { color: c.textPrimary }]}>{Math.round(overallAccuracy * 100)}%</Text>
           <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('progress.accuracy')}</Text>
         </View>
-        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+        <View style={[styles.statBox, { backgroundColor: c.cardBg }]}>
           <Text style={[styles.statNumber, { color: c.textPrimary }]}>{totalReviewed}</Text>
           <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('progress.totalReviews')}</Text>
         </View>
-        <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
+        <View style={[styles.statBox, { backgroundColor: c.cardBg }]}>
           <Text style={[styles.statNumber, { color: c.textPrimary }]}>{stats.length}</Text>
           <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('progress.daysTracked')}</Text>
         </View>

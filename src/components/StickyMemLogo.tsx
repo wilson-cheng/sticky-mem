@@ -3,15 +3,25 @@ import { View, StyleSheet, Text } from 'react-native';
 
 interface Props {
   size?: number;
+  accentColor?: string;
 }
 
-export default function StickyMemLogo({ size = 48 }: Props) {
+export default function StickyMemLogo({ size = 48, accentColor = '#7C4DFF' }: Props) {
   const foldSize = size * 0.22;
 
   return (
     <View style={[styles.wrapper, { width: size, height: size }]}>
       {/* Main note body */}
-      <View style={[styles.note, { width: size, height: size, borderRadius: size * 0.12 }]}>
+      <View style={[
+        styles.note,
+        {
+          width: size,
+          height: size,
+          borderRadius: size * 0.12,
+          backgroundColor: accentColor,
+          shadowColor: accentColor,
+        },
+      ]}>
         {/* Brain icon */}
         <Text style={[styles.brain, { fontSize: size * 0.42 }]}>🧠</Text>
         {/* SM initials */}
@@ -26,6 +36,7 @@ export default function StickyMemLogo({ size = 48 }: Props) {
           right: 0,
           top: 0,
           borderBottomLeftRadius: size * 0.06,
+          backgroundColor: accentColor + '22',
         },
       ]}>
         <View style={[
@@ -34,6 +45,7 @@ export default function StickyMemLogo({ size = 48 }: Props) {
             width: foldSize,
             height: foldSize,
             borderBottomLeftRadius: size * 0.06,
+            backgroundColor: accentColor,
           },
         ]} />
       </View>
@@ -46,10 +58,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   note: {
-    backgroundColor: '#6C63FF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -66,9 +76,6 @@ const styles = StyleSheet.create({
   },
   fold: {
     position: 'absolute',
-    backgroundColor: '#F5F5F5',
   },
-  foldInner: {
-    backgroundColor: '#5850DB',
-  },
+  foldInner: {},
 });

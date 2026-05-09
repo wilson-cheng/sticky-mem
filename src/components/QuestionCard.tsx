@@ -170,7 +170,7 @@ export default function QuestionCard({
                   returnKeyType="done"
                 />
                 <TouchableOpacity
-                  style={[styles.submitBtn, { backgroundColor: c.blue }, !userAnswer.trim() && { opacity: 0.5 }]}
+                  style={[styles.submitBtn, { backgroundColor: c.accent }, !userAnswer.trim() && { opacity: 0.5 }]}
                   onPress={handleSubmitAnswer}
                   disabled={!userAnswer.trim()}
                 >
@@ -191,7 +191,7 @@ export default function QuestionCard({
             {/* Result banner */}
             <View style={[
               styles.resultBanner,
-              isCorrect ? styles.correctBanner : styles.wrongBanner,
+              { backgroundColor: isCorrect ? c.successBg : c.dangerBg },
             ]}>
               <Text style={styles.bannerIcon}>
                 {isCorrect ? '✅' : isIdk ? '💡' : '❌'}
@@ -210,7 +210,7 @@ export default function QuestionCard({
             {/* Explanation */}
             {question.explanation && (
               <View style={[styles.explanationBox, { backgroundColor: c.statBoxBg + '80' }]}>
-                <Text style={[styles.explanationLabel, { color: c.blue }]}>Explanation:</Text>
+                <Text style={[styles.explanationLabel, { color: c.accent }]}>Explanation:</Text>
                 <Text style={[styles.explanationText, { color: c.textSecondary }]}>{question.explanation}</Text>
               </View>
             )}
@@ -218,7 +218,7 @@ export default function QuestionCard({
             {/* Actions */}
             <View style={styles.revealActions}>
               <TouchableOpacity
-                style={[styles.nextButton, { backgroundColor: isCorrect ? '#4CAF50' : c.blue }]}
+                style={[styles.nextButton, { backgroundColor: isCorrect ? c.cardBorderCorrect : c.accent }]}
                 onPress={handleNextPress}
               >
                 <Text style={styles.nextButtonText}>
@@ -227,7 +227,7 @@ export default function QuestionCard({
               </TouchableOpacity>
 
               {showRemove && (
-                <TouchableOpacity style={[styles.removeButton, { borderColor: '#FFCDD2' }]} onPress={onRemove}>
+                <TouchableOpacity style={[styles.removeButton, { borderColor: c.dangerBg }]} onPress={onRemove}>
                   <Text style={styles.removeButtonText}>Remove</Text>
                 </TouchableOpacity>
               )}
@@ -275,8 +275,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, paddingVertical: 12, borderRadius: 12,
   },
-  correctBanner: { backgroundColor: '#E8F5E9' },
-  wrongBanner: { backgroundColor: '#FFEBEE' },
   bannerIcon: { fontSize: 20 },
   bannerText: { fontSize: 16, fontWeight: '700' },
   answerBox: {
@@ -298,5 +296,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10, alignItems: 'center', borderRadius: 10,
     borderWidth: 1,
   },
-  removeButtonText: { color: '#C62828', fontSize: 14, fontWeight: '500' },
+  removeButtonText: { color: '#E53935', fontSize: 14, fontWeight: '500' },
 });

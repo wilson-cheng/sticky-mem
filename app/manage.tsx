@@ -168,7 +168,7 @@ export default function ManageContentScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.blue} />
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
@@ -181,7 +181,7 @@ export default function ManageContentScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📝</Text>
             <Text style={[styles.emptyText, { color: c.textSecondary }]}>No content yet.</Text>
-            <TouchableOpacity style={[styles.addButton, { backgroundColor: c.blue }]} onPress={() => router.push('/add')}>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: c.accent }]} onPress={() => router.push('/add')}>
               <Text style={styles.addButtonText}>Add Your First Content</Text>
             </TouchableOpacity>
           </View>
@@ -204,13 +204,13 @@ export default function ManageContentScreen() {
               {/* Action buttons row */}
               <View style={[styles.contentActions, { borderTopWidth: 1, borderTopColor: c.border }]}>
                 <TouchableOpacity
-                  style={[styles.viewBtn, { backgroundColor: c.blue }]}
+                  style={[styles.viewBtn, { backgroundColor: c.accent }]}
                   onPress={() => handleViewContent(item)}
                 >
                   <Text style={[styles.viewBtnText, { color: '#fff' }]}>📄 View Content</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.regenerateBtn, { backgroundColor: c.blue }]}
+                  style={[styles.regenerateBtn, { backgroundColor: c.accent }]}
                   onPress={() => handleRegenerate(item)}
                   disabled={regeneratingId === item.id}
                 >
@@ -221,7 +221,7 @@ export default function ManageContentScreen() {
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.deleteBtn, { backgroundColor: c.blue }]}
+                  style={[styles.deleteBtn, { backgroundColor: c.accent }]}
                   onPress={() => handleDelete(item.id, item.title)}
                 >
                   <Text style={[styles.deleteBtnText, { color: '#fff' }]}>🗑️ Delete</Text>

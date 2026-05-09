@@ -1,638 +1,422 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Animated, ActivityIndicator } from 'react-native';
-import { useRouter, useFocusEffect, Redirect } from 'expo-router';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Animated, Dimensions,
+} from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDatabase } from '../src/hooks/useDatabase';
-import { useSchedule } from '../src/hooks/useSchedule';
-import { useSettingsStore } from '../src/store/settings';
+import { initDatabase } from '../src/hooks/useDatabase';
 import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
-import { seedDemoContent } from '../src/db/seedData';
+import StickyMemLogo from '../src/components/StickyMemLogo';
+
+const { width } = Dimensions.get('window');
+
+// ─── Feature card data ───
+const FEATURES = [
+  { key: 'chat', emoji: '💬', label: 'Chat & Learn', desc: 'Review with AI-powered flashcards' },
+  { key: 'knowledge', emoji: '🧠', label: 'Knowledge Base', desc: 'Your personal content library' },
+  { key: 'progress', emoji: '📊', label: 'Progress', desc: 'Track your learning stats' },
+  { key: 'cards', emoji: '🃏', label: 'All Cards', desc: 'Browse every flashcard' },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const repo = useDatabase();
-  const { dueCount, totalQuestions, todayReviewed, loading, refresh } = useSchedule(repo);
-  const isConfigured = useSettingsStore((s) => s.isConfigured);
-  const isHydrated = useSettingsStore((s) => s.isHydrated);
-  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
-  const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
-  const { t } = useTranslation();
   const c = useColors();
-  const [seeding, setSeeding] = useState(false);
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const [totalToReview, setTotalToReview] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [totalCards, setTotalCards] = useState(0);
+  const [hasContent, setHasContent] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // ─── Onboarding redirect ───
-  // Use declarative Redirect instead of imperative router.replace to avoid
-  // "navigation before layout mounts" errors
-  if (isHydrated && !hasSeenOnboarding) {
-    return <Redirect href="/onboarding" />;
-  }
-
-  const handleSeedDemo = useCallback(async () => {
-    if (!repo || seeding) return;
-    setSeeding(true);
-    try {
-      await seedDemoContent(repo);
-      Alert.alert(
-        t('home.demoAdded'),
-        '✅ 2 topics loaded: "What is Spaced Repetition?" + "The Pareto Principle"\n\n📝 9 questions total — some due now, some due tomorrow.\n\nTap "Start Review" to see how it works!',
-        [{ text: "Let's Go! 🚀", style: 'default' }],
-      );
-      refresh();
-    } catch (e: any) {
-      console.error('Failed to seed demo:', e);
-      Alert.alert('Error', e.message || 'Failed to load demo content.');
-    } finally {
-      setSeeding(false);
-    }
-  }, [repo, seeding, t, refresh]);
-
-  // Animation for empty state
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-
-  // Stagger animations for normal state sections
-  const cardAnim = useRef(new Animated.Value(0)).current;
-  const statsAnim = useRef(new Animated.Value(0)).current;
-  const actionsAnim = useRef(new Animated.Value(0)).current;
-
-  // Icon micro-animations
-  const statIcon1 = useRef(new Animated.Value(0)).current;
-  const statIcon2 = useRef(new Animated.Value(0)).current;
-  const statIcon3 = useRef(new Animated.Value(0)).current;
-  const gearRotation = useRef(new Animated.Value(0)).current;
-  const btnScale = useRef(new Animated.Value(0.96)).current;
-
+  // Pulse animation for CTA button
   useEffect(() => {
-    if (totalQuestions === 0 && !loading) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1, duration: 600, useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0, duration: 600, useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [totalQuestions, loading, fadeAnim, slideAnim]);
-
-  // Stagger animations when content is present
-  useEffect(() => {
-    if (totalQuestions > 0 && !loading) {
-      cardAnim.setValue(0);
-      statsAnim.setValue(0);
-      actionsAnim.setValue(0);
-      statIcon1.setValue(0);
-      statIcon2.setValue(0);
-      statIcon3.setValue(0);
-      btnScale.setValue(0.96);
-      Animated.stagger(120, [
-        Animated.timing(cardAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(statsAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(actionsAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-      ]).start(() => {
-        // Bounce stat icons after stagger
-        Animated.stagger(80, [
-          Animated.spring(statIcon1, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
-          Animated.spring(statIcon2, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
-          Animated.spring(statIcon3, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
-        ]).start();
-        // Pulse the primary button
-        Animated.spring(btnScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
-      });
-    }
-  }, [totalQuestions, loading, cardAnim, statsAnim, actionsAnim]);
-
-  // Gear rotation micro-animation
-  useEffect(() => {
-    Animated.sequence([
-      Animated.timing(gearRotation, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.timing(gearRotation, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
-  }, [gearRotation]);
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [pulseAnim]);
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh])
+      loadStats();
+    }, []),
   );
 
-  // Determine if the daily target has been met
-  const targetMet = dailyReviewTarget > 0 && todayReviewed >= dailyReviewTarget;
-  const displayDueCount = targetMet ? 0 : dueCount;
-  const isBehind = !targetMet && dueCount > Math.max(dailyReviewTarget * 2, 15);
-  const isActive = !targetMet && dueCount > 0 && !isBehind;
-  const buttonLabel =
-    todayReviewed === 0
-      ? t('home.startReview')
-      : targetMet
-        ? t('home.reviewMore')
-        : `${t('home.finishRest')} (${dailyReviewTarget - todayReviewed})`;
+  const loadStats = async () => {
+    try {
+      const repo = await initDatabase();
+      const allContents = await repo.getAllContents();
+      setHasContent(allContents.length > 0);
 
-  const getAccuracyEmoji = () => {
-    if (todayReviewed === 0) return '';
-    const accuracy = todayReviewed / Math.max(dailyReviewTarget, 1);
-    if (accuracy >= 1) return '🎯';
-    if (accuracy >= 0.5) return '🔥';
-    return '💪';
+      let dueCount = 0;
+      let streakCount = 0;
+      let totalCardCount = 0;
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const today = new Date().toISOString().slice(0, 10);
+
+      for (const content of allContents) {
+        const questions = await repo.getQuestionsByContentId(content.id);
+        totalCardCount += questions.length;
+        for (const q of questions) {
+          const card = await repo.getCardByQuestionId(q.id);
+          if (card && card.nextReviewAt <= Date.now()) {
+            dueCount++;
+          }
+        }
+      }
+
+      // Streak from daily stats
+      const dailyStats = await repo.getDailyStats(30);
+      for (const day of dailyStats) {
+        if (day.date <= today && day.totalReviewed > 0) streakCount++;
+        else break;
+      }
+
+      setTotalToReview(dueCount);
+      setStreakDays(streakCount);
+      setTotalCards(totalCardCount);
+    } catch (e) {
+      console.error('Failed to load home stats:', e);
+    }
   };
 
-  // ─── LOADING STATE ─── //
-  if (loading && totalQuestions === 0) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <View style={[styles.header, { paddingTop: 0 }]}>
-          <View style={styles.headerLeft}>
-            <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-            <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
-          </View>
-        </View>
-        <View style={styles.loadingCentered}>
-          <ActivityIndicator size="large" color={c.blue} />
-        </View>
-      </View>
-    );
-  }
+  const handleStartReview = () => {
+    if (!hasContent) {
+      Alert.alert('No Content Yet', 'Add some content first to start reviewing!');
+      router.push('/add');
+      return;
+    }
+    if (totalToReview === 0) {
+      Alert.alert('All Caught Up', 'No cards due for review. Add more content to keep learning!');
+      return;
+    }
+    router.push('/review');
+  };
 
-  // ─── EMPTY STATE ─── //
-  if (!loading && totalQuestions === 0) {
-    return (
-      <View style={[styles.container, { backgroundColor: c.bg }]}>
-        <ScrollView contentContainerStyle={styles.content}>
-          {/* Header */}
-          <View style={[styles.header, { paddingTop: insets.top }]}>
-            <View style={styles.headerLeft}>
-              <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-              <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/settings')}>
-              <Animated.Text style={[styles.settingsIcon, {
-                transform: [{
-                  rotate: gearRotation.interpolate({
-                    inputRange: [0, 1], outputRange: ['0deg', '15deg'],
-                  })
-                }]
-              }]}>⚙️</Animated.Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Value Proposition */}
-          <Animated.View
-            style={[
-              styles.heroSection,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-            ]}
-          >
-            <View style={[styles.heroIconContainer, { backgroundColor: c.accent + '15' }]}>
-              <Image source={require('../assets/icon.png')} style={styles.heroLogoImage} />
-            </View>
-            <Text style={[styles.heroTitle, { color: c.textPrimary }]}>
-              {t('home.emptyTitle')}
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: c.textSecondary }]}>
-              {t('home.emptySubtitle')}
-            </Text>
-
-            {/* How it works */}
-            <View style={styles.howItWorksSection}>
-              <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>
-                {t('home.howItWorks')}
-              </Text>
-              <View style={styles.stepsRow}>
-                <View style={[styles.stepCard, { backgroundColor: c.cardBg }]}>
-                  <View style={[styles.stepCircle, { backgroundColor: c.accent }]}>
-                    <Text style={styles.stepNumber}>1</Text>
-                  </View>
-                  <Text style={[styles.stepTitle, { color: c.textPrimary }]}>📝</Text>
-                  <Text style={[styles.stepDesc, { color: c.textSecondary }]}>
-                    {t('home.emptyStep1')}
-                  </Text>
-                  <Text style={[styles.stepSub, { color: c.textSecondary }]}>
-                    {t('home.emptyStep1Desc')}
-                  </Text>
-                </View>
-                <View style={[styles.stepArrow]}>
-                  <Text style={[styles.arrowText, { color: c.textSecondary }]}>→</Text>
-                </View>
-                <View style={[styles.stepCard, { backgroundColor: c.cardBg }]}>
-                  <View style={[styles.stepCircle, { backgroundColor: c.accent }]}>
-                    <Text style={styles.stepNumber}>2</Text>
-                  </View>
-                  <Text style={[styles.stepTitle, { color: c.textPrimary }]}>🤖</Text>
-                  <Text style={[styles.stepDesc, { color: c.textSecondary }]}>
-                    {t('home.emptyStep2')}
-                  </Text>
-                  <Text style={[styles.stepSub, { color: c.textSecondary }]}>
-                    {t('home.emptyStep2Desc')}
-                  </Text>
-                </View>
-                <View style={[styles.stepArrow]}>
-                  <Text style={[styles.arrowText, { color: c.textSecondary }]}>→</Text>
-                </View>
-                <View style={[styles.stepCard, { backgroundColor: c.cardBg }]}>
-                  <View style={[styles.stepCircle, { backgroundColor: c.accent }]}>
-                    <Text style={styles.stepNumber}>3</Text>
-                  </View>
-                  <Text style={[styles.stepTitle, { color: c.textPrimary }]}>✅</Text>
-                  <Text style={[styles.stepDesc, { color: c.textSecondary }]}>
-                    {t('home.emptyStep3')}
-                  </Text>
-                  <Text style={[styles.stepSub, { color: c.textSecondary }]}>
-                    {t('home.emptyStep3Desc')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* CTA */}
-            <TouchableOpacity
-              style={[styles.getStartedButton, { backgroundColor: c.accent }]}
-              onPress={() => router.push('/add')}
-            >
-              <Text style={styles.getStartedText}>{t('home.getStarted')}</Text>
-            </TouchableOpacity>
-
-            {/* Try Demo */}
-            <TouchableOpacity
-              style={[styles.tryDemoButton, { borderColor: c.border }]}
-              onPress={handleSeedDemo}
-              disabled={seeding || !repo}
-            >
-              {seeding ? (
-                <ActivityIndicator size="small" color={c.textSecondary} />
-              ) : (
-                <Text style={[styles.tryDemoText, { color: c.textSecondary }]}>
-                  {t('home.tryDemo')}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── NORMAL STATE ─── //
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Image source={require('../assets/icon.png')} style={styles.logoImage} />
-            <Text style={[styles.appName, { color: c.textPrimary }]}>StickyMem</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/settings')}>
-            <Animated.Text style={[styles.settingsIcon, {
-              transform: [{
-                rotate: gearRotation.interpolate({
-                  inputRange: [0, 1], outputRange: ['0deg', '15deg'],
-                })
-              }]
-            }]}>⚙️</Animated.Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Today's Review Card */}
-        <Animated.View
-          style={{
-            opacity: cardAnim,
-            transform: [{ translateY: cardAnim.interpolate({
-              inputRange: [0, 1], outputRange: [20, 0],
-            }) }],
-          }}
+    <ScrollView
+      style={[styles.container, { backgroundColor: c.bg }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+    >
+      {/* ── Hero Card ── */}
+      <View style={styles.heroSection}>
+        <LinearGradient
+          colors={c.heroGradient as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.heroCard, { borderColor: c.border }]}
         >
-          <View style={[styles.reviewCard, { backgroundColor: c.cardBg }]}>
-            <Text style={[styles.reviewCardTitle, { color: c.textSecondary }]}>
-              {isBehind ? '🚨' : '⚡'} {t('home.todayReview')} {getAccuracyEmoji()}
-            </Text>
-
-            {loading ? (
-              <ActivityIndicator size="large" color={c.blue} style={{ marginVertical: 24 }} />
-            ) : displayDueCount > 0 ? (
-              <>
-                {/* Due count circle */}
-                <View style={[styles.countCircle, { backgroundColor: isBehind ? c.warningBg : c.accent + '18' }]}>
-                  <Text style={[styles.countNumber, { color: isBehind ? c.warning : c.accent }]}>{dueCount}</Text>
-                </View>
-                <Text style={[styles.reviewCardLabel, { color: c.textSecondary }]}>
-                  {isBehind
-                    ? 'Backlog building — time to catch up!'
-                    : dueCount === 1
-                      ? t('home.questionReady')
-                      : t('home.questionsReady')}
-                </Text>
-
-                {/* Behind urgency bar */}
-                {isBehind && (
-                  <View style={[styles.behindBar, { backgroundColor: c.warningBg }]}>
-                    <Text style={[styles.behindBarText, { color: c.warning }]}>
-                      📋 {dueCount} questions piling up — try a quick session now
-                    </Text>
-                  </View>
-                )}
-
-                {/* Daily target progress bar */}
-                {dailyReviewTarget > 0 && todayReviewed > 0 && (
-                  <View style={styles.progressSection}>
-                    <View style={[styles.progressBarBg, { backgroundColor: c.border }]}>
-                      <View style={[
-                        styles.progressBarFill,
-                        { backgroundColor: c.accent, width: `${Math.min(Math.round((todayReviewed / dailyReviewTarget) * 100), 100)}%` },
-                      ]} />
-                    </View>
-                    <Text style={[styles.progressText, { color: c.textSecondary }]}>
-                      {todayReviewed} / {dailyReviewTarget} today
-                    </Text>
-                  </View>
-                )}
-
-                {/* Start Review Button */}
-                <Animated.View style={{ transform: [{ scale: btnScale }] }}>
-                  <TouchableOpacity
-                    style={[styles.primaryButton, { backgroundColor: c.blue }]}
-                    onPress={() => router.push('/review')}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              </>
-            ) : totalQuestions > 0 ? (
-              <>
-                {/* All done — celebration */}
-                <View style={[styles.countCircle, { backgroundColor: c.successBg }]}>
-                  <Text style={styles.doneEmoji}>🎉</Text>
-                </View>
-                <Text style={[styles.reviewCardLabel, { color: c.textSecondary, fontSize: 16, fontWeight: '600', marginTop: 12 }]}>
-                  {t('home.allDone')}
-                </Text>
-                {todayReviewed > 0 && (
-                  <Text style={[styles.streakInlineLabel, { color: c.textSecondary }]}>
-                    {t('home.streakDays', { count: todayReviewed })}
-                  </Text>
-                )}
-                {targetMet && (
-                  <Animated.View style={{ transform: [{ scale: btnScale }] }}>
-                    <TouchableOpacity
-                      style={[styles.primaryButton, { backgroundColor: c.accent }]}
-                      onPress={() => router.push('/review')}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryButtonText}>▶  {buttonLabel}</Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-              </>
-            ) : null}
+          <View style={styles.heroTop}>
+            <StickyMemLogo size={44} accentColor={c.accent} />
+            <Text style={styles.heroTitle}>StickyMem</Text>
           </View>
-        </Animated.View>
-
-        {/* Stats Row */}
-        <Animated.View
-          style={{
-            opacity: statsAnim,
-            transform: [{ translateY: statsAnim.interpolate({
-              inputRange: [0, 1], outputRange: [20, 0],
-            }) }],
-          }}
-        >
-        <View style={styles.statsRow}>
-          <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Animated.View style={{ transform: [{ scale: statIcon1 }] }}>
-              <Text style={styles.statIcon}>📚</Text>
-            </Animated.View>
-            <Text style={[styles.statNumber, { color: c.textPrimary }]}>{totalQuestions}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.totalCards')}</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Animated.View style={{ transform: [{ scale: statIcon2 }] }}>
-              <Text style={styles.statIcon}>⏰</Text>
-            </Animated.View>
-            <Text style={[styles.statNumber, { color: displayDueCount > 0 ? c.blue : c.textPrimary }]}>{displayDueCount}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.readyToReview')}</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: c.statBoxBg }]}>
-            <Animated.View style={{ transform: [{ scale: statIcon3 }] }}>
-              <Text style={styles.statIcon}>✅</Text>
-            </Animated.View>
-            <Text style={[styles.statNumber, { color: c.textPrimary }]}>{todayReviewed}</Text>
-            <Text style={[styles.statLabel, { color: c.textSecondary }]}>{t('home.reviewedTodayLabel')}</Text>
-          </View>
-        </View>
-        </Animated.View>
-
-        {/* Streak / Motivation Card */}
-        {todayReviewed > 0 && (
-          <Animated.View
-            style={[styles.motivationCard, { backgroundColor: c.cardBg, opacity: statsAnim }]}
-          >
-            <Text style={styles.motivationEmoji}>🔥</Text>
-            <View style={styles.motivationTextSection}>
-              <Text style={[styles.motivationLabel, { color: c.textPrimary }]}>
-                {t('home.streakDays', { count: todayReviewed })}
-              </Text>
-              <Text style={[styles.motivationSubtext, { color: c.textSecondary }]}>
-                {targetMet
-                  ? t('home.onARoll')
-                  : `Keep going — ${dailyReviewTarget - todayReviewed} more`}
-              </Text>
+          <Text style={styles.heroSub}>Learn more, forget less 📚</Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{totalCards}</Text>
+              <Text style={styles.heroStatLabel}>Cards</Text>
             </View>
-          </Animated.View>
-        )}
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{totalToReview}</Text>
+              <Text style={styles.heroStatLabel}>Due Today</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatNum}>{streakDays}</Text>
+              <Text style={styles.heroStatLabel}>Day Streak</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
 
-        {/* API Key Warning — only show after hydration is complete */}
-        {!loading && isHydrated && !isConfigured && (
-          <TouchableOpacity style={[styles.warningCard, { backgroundColor: c.warningBg }]} onPress={() => router.push('/settings')}>
-            <Text style={styles.warningIcon}>⚠️</Text>
-            <Text style={styles.warningText}>{t('home.apiKeyWarning')}</Text>
-          </TouchableOpacity>
-        )}
+      {/* ── CTA Review Button ── */}
+      <Animated.View style={[styles.ctaWrapper, { transform: [{ scale: pulseAnim }] }]}>
+        <TouchableOpacity onPress={handleStartReview} activeOpacity={0.85}>
+          <LinearGradient
+            colors={c.ctaGradient as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaButton}
+          >
+            <Text style={[styles.ctaEmoji]}>⭐</Text>
+            <Text style={[styles.ctaText, { color: c.ctaTextColor }]}>
+              {totalToReview > 0
+                ? `Start Review (${totalToReview})`
+                : 'Start Review'}
+            </Text>
+            <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
 
-        {/* Quick Actions */}
-        <Animated.View
-          style={{
-            opacity: actionsAnim,
-            transform: [{ translateY: actionsAnim.interpolate({
-              inputRange: [0, 1], outputRange: [20, 0],
-            }) }],
-          }}
-        >
-        <View style={styles.actionsRow}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: c.cardBg }]} onPress={() => router.push('/add')}>
-            <Text style={styles.actionIcon}>📝</Text>
-            <Text style={[styles.actionText, { color: c.textSecondary }]}>{t('home.addContent')}</Text>
-            <Text style={[styles.actionHint, { color: c.textSecondary }]}>Paste text or link</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: c.cardBg }]} onPress={() => router.push('/manage')}>
-            <Text style={styles.actionIcon}>📂</Text>
-            <Text style={[styles.actionText, { color: c.textSecondary }]}>{t('home.manage')}</Text>
-            <Text style={[styles.actionHint, { color: c.textSecondary }]}>View all content</Text>
-          </TouchableOpacity>
+      {/* ── Quick Stats ── */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={c.statGradient1 as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statCardGradient}
+          >
+            <Text style={styles.statIcon}>🔥</Text>
+            <Text style={styles.statValue}>{streakDays}</Text>
+            <Text style={styles.statLabel}>Day Streak</Text>
+          </LinearGradient>
         </View>
-        </Animated.View>
-      </ScrollView>
-    </View>
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={c.statGradient2 as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statCardGradient}
+          >
+            <Text style={styles.statIcon}>🧠</Text>
+            <Text style={styles.statValue}>{totalCards}</Text>
+            <Text style={styles.statLabel}>Total Cards</Text>
+          </LinearGradient>
+        </View>
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={c.statGradient3 as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statCardGradient}
+          >
+            <Text style={styles.statIcon}>📅</Text>
+            <Text style={styles.statValue}>{totalToReview}</Text>
+            <Text style={styles.statLabel}>Due Now</Text>
+          </LinearGradient>
+        </View>
+      </View>
+
+      {/* ── Feature Grid ── */}
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Explore</Text>
+      <View style={styles.featureGrid}>
+        {FEATURES.map((feature, i) => {
+          const gradientColors = [c.featureGradient1, c.featureGradient2, c.featureGradient3, c.featureGradient4][i] as [string, string];
+          return (
+            <TouchableOpacity
+              key={feature.key}
+              style={styles.featureCard}
+              onPress={() => {
+                if (feature.key === 'progress') router.push('/progress');
+                else if (feature.key === 'knowledge') router.push('/manage');
+                else if (feature.key === 'cards') router.push('/review');
+                else router.push('/add');
+              }}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.featureCardGradient}
+              >
+                <Text style={styles.featureEmoji}>{feature.emoji}</Text>
+                <Text style={styles.featureLabel}>{feature.label}</Text>
+                <Text style={styles.featureDesc}>{feature.desc}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* ── Quick Actions ── */}
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Quick Actions</Text>
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: c.cardBg, borderColor: c.border }]}
+          onPress={() => router.push('/add')}
+        >
+          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>➕ Add Content</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: c.cardBg, borderColor: c.border }]}
+          onPress={() => router.push('/settings')}
+        >
+          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>⚙️ Settings</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20 },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 24,
+  content: { paddingHorizontal: 20, paddingBottom: 60 },
+
+  // ── Hero ──
+  heroSection: { marginBottom: 20 },
+  heroCard: {
+    borderRadius: 24,
+    padding: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    shadowColor: '#7C4DFF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logoCircle: {
-    width: 40, height: 40, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  logoEmoji: { fontSize: 20 },
-  logoImage: { width: 36, height: 36, borderRadius: 8 },
-  appName: { fontSize: 28, fontWeight: '800' },
-  settingsIcon: { fontSize: 24 },
-  loadingCentered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  // ─── Empty State ─── //
-  heroSection: {
-    alignItems: 'center', paddingTop: 20,
-  },
-  heroIconContainer: {
-    width: 80, height: 80, borderRadius: 40,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
-  },
-  heroEmoji: { fontSize: 40 },
-  heroLogoImage: { width: 50, height: 50, borderRadius: 8 },
-  heroTitle: {
-    fontSize: 24, fontWeight: '800',
-    textAlign: 'center', lineHeight: 32,
-    marginBottom: 12,
-  },
-  heroSubtitle: {
-    fontSize: 14, textAlign: 'center',
-    lineHeight: 20, paddingHorizontal: 16,
-    marginBottom: 32,
-  },
-  howItWorksSection: {
-    width: '100%', marginBottom: 28,
-  },
-  sectionLabel: {
-    fontSize: 12, fontWeight: '600',
-    textAlign: 'center', marginBottom: 12,
-    textTransform: 'uppercase', letterSpacing: 1,
-  },
-  stepsRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCard: {
-    width: 90, borderRadius: 14, padding: 12,
+  heroTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  stepCircle: {
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
+    gap: 12,
     marginBottom: 8,
   },
-  stepNumber: { fontSize: 13, fontWeight: '800', color: '#fff' },
-  stepTitle: { fontSize: 20, marginBottom: 4 },
-  stepDesc: { fontSize: 12, fontWeight: '600' },
-  stepSub: { fontSize: 10, marginTop: 2, textAlign: 'center' },
-  stepArrow: {
-    paddingHorizontal: 6,
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  arrowText: { fontSize: 18, fontWeight: '300' },
-  getStartedButton: {
-    borderRadius: 14, paddingVertical: 16, paddingHorizontal: 48,
-    alignItems: 'center', width: '100%',
-    shadowColor: '#6C63FF', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+  heroSub: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 20,
   },
-  getStartedText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  tryDemoButton: {
-    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40,
-    alignItems: 'center', width: '100%', marginTop: 12,
+  heroStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  heroStat: { alignItems: 'center' },
+  heroStatNum: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+
+  // ── CTA ──
+  ctaWrapper: {
+    marginBottom: 24,
+    shadowColor: '#FFB300',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  ctaButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  ctaEmoji: { fontSize: 22 },
+  ctaText: {
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  ctaChevron: { fontSize: 20, fontWeight: '700' },
+
+  // ── Stats Row ──
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  statCardGradient: {
+    padding: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statIcon: { fontSize: 22 },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+
+  // ── Section Title ──
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+
+  // ── Feature Grid ──
+  featureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 24,
+  },
+  featureCard: {
+    width: (width - 50) / 2,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  featureCardGradient: {
+    padding: 20,
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 140,
+  },
+  featureEmoji: { fontSize: 30 },
+  featureLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  featureDesc: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+
+  // ── Quick Actions ──
+  actionRow: { flexDirection: 'row', gap: 10 },
+  actionBtn: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
     borderWidth: 1.5,
   },
-  tryDemoText: { fontSize: 15, fontWeight: '500' },
-  // ─── Normal State ─── //
-  reviewCard: {
-    borderRadius: 20, padding: 28,
-    alignItems: 'center', marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
-  },
-  reviewCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16, letterSpacing: 0.3 },
-  reviewCardLabel: { fontSize: 14, marginTop: 6, marginBottom: 8 },
-  countCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4,
-  },
-  countNumber: { fontSize: 44, fontWeight: '800' },
-  doneEmoji: { fontSize: 44 },
-  progressSection: {
-    width: '100%', marginTop: 12, marginBottom: 16,
-    alignItems: 'center',
-  },
-  progressBarBg: {
-    width: '100%', height: 8, borderRadius: 4,
-    overflow: 'hidden', marginBottom: 6,
-  },
-  progressBarFill: { height: '100%', borderRadius: 4 },
-  progressText: { fontSize: 12, fontWeight: '500' },
-  streakInlineLabel: { fontSize: 13, marginTop: 8, fontWeight: '500' },
-  primaryButton: {
-    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 40,
-    alignItems: 'center', width: '100%', marginTop: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
-  },
-  primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  statBox: {
-    flex: 1, borderRadius: 14, padding: 16, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  statIcon: { fontSize: 20, marginBottom: 4 },
-  statNumber: { fontSize: 28, fontWeight: '800' },
-  statLabel: { fontSize: 11, marginTop: 2, fontWeight: '500' },
-  motivationCard: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 16, padding: 16, marginBottom: 16, gap: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  motivationEmoji: { fontSize: 28 },
-  motivationTextSection: { flex: 1 },
-  motivationLabel: { fontSize: 15, fontWeight: '700' },
-  motivationSubtext: { fontSize: 12, marginTop: 2 },
-  warningCard: {
-    flexDirection: 'row', borderRadius: 12, padding: 14,
-    alignItems: 'center', gap: 10, marginBottom: 16,
-  },
-  warningIcon: { fontSize: 20 },
-  warningText: { flex: 1, fontSize: 13, color: '#E65100', lineHeight: 18 },
-  actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  actionButton: {
-    flex: 1, borderRadius: 16, padding: 20,
-    alignItems: 'center', gap: 6,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  actionIcon: { fontSize: 32 },
-  actionText: { fontSize: 15, fontWeight: '600' },
-  actionHint: { fontSize: 11, marginTop: 1, opacity: 0.7 },
-  // Behind urgency
-  behindBar: {
-    borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14,
-    marginBottom: 12, alignSelf: 'stretch',
-  },
-  behindBarText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  actionBtnText: { fontSize: 14, fontWeight: '600' },
 });

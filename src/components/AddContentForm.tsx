@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Alert from '../utils/alertWrapper';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useColors } from '../theme/useColors';
 
 interface Props {
   onSubmit: (input: string) => Promise<void>;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function AddContentForm({ onSubmit, isProcessing }: Props) {
+  const c = useColors();
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<'text' | 'url'>('text');
   const [fetchingUrl, setFetchingUrl] = useState(false);
@@ -44,22 +46,22 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
     <View style={styles.container}>
       <View style={styles.tabRow}>
         <TouchableOpacity
-          style={[styles.tab, mode === 'text' && styles.tabActive]}
+          style={[styles.tab, { backgroundColor: c.statBoxBg }, mode === 'text' && { backgroundColor: c.accent }]}
           onPress={() => setMode('text')}
         >
-          <Text style={[styles.tabText, mode === 'text' && styles.tabTextActive]}>Paste Text</Text>
+          <Text style={[styles.tabText, { color: c.textSecondary }, mode === 'text' && { color: c.textOnPrimary }]}>Paste Text</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, mode === 'url' && styles.tabActive]}
+          style={[styles.tab, { backgroundColor: c.statBoxBg }, mode === 'url' && { backgroundColor: c.accent }]}
           onPress={() => setMode('url')}
         >
-          <Text style={[styles.tabText, mode === 'url' && styles.tabTextActive]}>URL</Text>
+          <Text style={[styles.tabText, { color: c.textSecondary }, mode === 'url' && { color: c.textOnPrimary }]}>URL</Text>
         </TouchableOpacity>
       </View>
 
       {mode === 'text' ? (
         <TextInput
-          style={styles.textArea}
+          style={[styles.textArea, { backgroundColor: c.inputBg, borderColor: c.border }]}
           value={input}
           onChangeText={setInput}
           placeholder="Paste the content you want to remember..."
@@ -68,7 +70,7 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
         />
       ) : (
         <TextInput
-          style={styles.urlInput}
+          style={[styles.urlInput, { backgroundColor: c.inputBg, borderColor: c.border }]}
           value={input}
           onChangeText={setInput}
           placeholder="https://example.com/article"
@@ -79,23 +81,23 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
       )}
 
       <TouchableOpacity
-        style={[styles.submitButton, (!input.trim() || isBusy) && styles.submitButtonDisabled]}
+        style={[styles.submitButton, { backgroundColor: c.accent }, (!input.trim() || isBusy) && { backgroundColor: c.border }]}
         onPress={handleSubmit}
         disabled={!input.trim() || isBusy}
       >
         {fetchingUrl ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={c.textOnPrimary} />
         ) : isProcessing ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={c.textOnPrimary} />
         ) : (
-          <Text style={styles.submitText}>
+          <Text style={[styles.submitText, { color: c.textOnPrimary }]}>
             {mode === 'url' ? 'Fetch & Edit Content' : 'Edit Content'}
           </Text>
         )}
       </TouchableOpacity>
 
       {mode === 'url' && !fetchingUrl && (
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { color: c.textSecondary }]}>
           The URL will be fetched, converted to Markdown, and opened in the editor for review.
         </Text>
       )}
@@ -108,28 +110,28 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', marginBottom: 16, gap: 8 },
   tab: {
     flex: 1, paddingVertical: 10, borderRadius: 8,
-    backgroundColor: '#F0F0F0', alignItems: 'center',
+    alignItems: 'center',
   },
-  tabActive: { backgroundColor: '#4A90D9' },
-  tabText: { fontSize: 14, fontWeight: '500', color: '#666' },
-  tabTextActive: { color: '#fff' },
+  tabActive: {},
+  tabText: { fontSize: 14, fontWeight: '500' },
+  tabTextActive: {},
   textArea: {
-    borderWidth: 1, borderColor: '#DDD', borderRadius: 10,
-    padding: 14, fontSize: 16, backgroundColor: '#F9F9F9',
+    borderWidth: 1, borderRadius: 10,
+    padding: 14, fontSize: 16,
     minHeight: 200, textAlignVertical: 'top',
   },
   urlInput: {
-    borderWidth: 1, borderColor: '#DDD', borderRadius: 10,
-    padding: 14, fontSize: 16, backgroundColor: '#F9F9F9',
+    borderWidth: 1, borderRadius: 10,
+    padding: 14, fontSize: 16,
   },
   submitButton: {
-    backgroundColor: '#4A90D9', borderRadius: 10, padding: 16,
+    borderRadius: 10, padding: 16,
     alignItems: 'center', marginTop: 20,
   },
-  submitButtonDisabled: { backgroundColor: '#CCC' },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  submitButtonDisabled: {},
+  submitText: { fontSize: 16, fontWeight: '600' },
   hint: {
-    fontSize: 12, color: '#888', marginTop: 8,
+    fontSize: 12, marginTop: 8,
     textAlign: 'center', lineHeight: 16,
   },
 });

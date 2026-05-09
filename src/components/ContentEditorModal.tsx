@@ -129,7 +129,7 @@ export default function ContentEditorModal({
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: c.border }]}>
           <TouchableOpacity onPress={handleCancel} disabled={saving}>
-            <Text style={[styles.closeBtn, { color: c.blue }]}>Cancel</Text>
+            <Text style={[styles.closeBtn, { color: c.accent }]}>Cancel</Text>
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={[styles.headerTitle, { color: c.textPrimary }]} numberOfLines={1}>
@@ -141,12 +141,12 @@ export default function ContentEditorModal({
             disabled={saving || editedMarkdown === markdown}
           >
             {saving ? (
-              <ActivityIndicator size="small" color={c.blue} />
+              <ActivityIndicator size="small" color={c.accent} />
             ) : (
               <Text
                 style={[
                   styles.saveBtn,
-                  { color: editedMarkdown !== markdown ? c.blue : c.textSecondary },
+                  { color: editedMarkdown !== markdown ? c.accent : c.textSecondary },
                 ]}
               >
                 Save

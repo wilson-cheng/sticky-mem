@@ -10,6 +10,7 @@ import { sm2, calculateNextReview } from '../src/engine/sm2';
 import { useSettingsStore } from '../src/store/settings';
 import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -296,7 +297,7 @@ export default function ReviewScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator size="large" color={c.blue} />
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
@@ -328,7 +329,7 @@ export default function ReviewScreen() {
       : `${sessionSeconds}s`;
 
     return (
-      <View style={[styles.centered, { paddingTop: insets.top, backgroundColor: c.bg }]}>
+      <LinearGradient colors={c.heroGradient} style={[styles.centered, { paddingTop: insets.top }]}>
         {/* Emoji burst particles */}
         {doneEmojiAnims.map((anim, i) => (
           <Animated.Text
@@ -351,7 +352,7 @@ export default function ReviewScreen() {
 
         {/* Dynamic message */}
         <Text style={[styles.doneTitle, { color: c.textPrimary }]}>{message}</Text>
-        <Text style={[styles.doneSubtitle, { color: c.textSecondary }]}>
+        <Text style={[styles.doneSubtitle, { color: c.textOnHero }]}>
           {t('review.sessionSubtitle', { count: stats.total, count_label: countLabel })}
         </Text>
 
@@ -376,7 +377,7 @@ export default function ReviewScreen() {
             <Text style={[styles.doneStatLabel, { color: c.textSecondary }]}>{t('review.correct')}</Text>
           </View>
           <View style={[styles.doneStatBox, { backgroundColor: c.cardBg }]}>
-            <Animated.Text style={[styles.doneStatValue, { color: accuracy >= 80 ? '#4CAF50' : '#FF9800' }]}>
+            <Animated.Text style={[styles.doneStatValue, { color: accuracy >= 80 ? c.cardBorderCorrect : '#FF9800' }]}>
               {animatingAccuracy.interpolate({
                 inputRange: [0, 1],
                 outputRange: ['0%', `${accuracy}%`],
@@ -387,19 +388,19 @@ export default function ReviewScreen() {
         </View>
 
         {/* Sub-encouragement */}
-        <Text style={[styles.doneSubSubtitle, { color: c.textSecondary }]}>
+        <Text style={[styles.doneSubSubtitle, { color: c.textOnHero }]}>
           {subtitle}
         </Text>
 
         {/* Duration */}
-        <Text style={[styles.doneDuration, { color: c.textSecondary }]}>
+        <Text style={[styles.doneDuration, { color: c.textOnHero }]}>
           🕐 {durationText}
         </Text>
 
-        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.blue }]} onPress={goHome}>
+        <TouchableOpacity style={[styles.homeBtn, { backgroundColor: c.accent }]} onPress={goHome}>
           <Text style={styles.homeBtnText}>{t('review.backToHome')}</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -438,7 +439,7 @@ export default function ReviewScreen() {
           <View
             style={[
               styles.progressFill,
-              { width: `${(currentIndex / reviewQueue.length) * 100}%` },
+              { width: `${(currentIndex / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
             ]}
           />
         </View>
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   headerProgress: { fontSize: 14, fontWeight: '600' },
   progressContainer: { paddingHorizontal: 16, marginBottom: 8 },
   progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#6C63FF', borderRadius: 3 },
+  progressFill: { height: '100%', borderRadius: 3 },
   doneLogo: { width: 100, height: 100, borderRadius: 20, marginBottom: 16 },
   doneTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
   doneCelebration: { fontSize: 56, marginBottom: 12 },
