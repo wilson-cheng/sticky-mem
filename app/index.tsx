@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Dimensions,
+  Animated, Dimensions, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -107,6 +107,7 @@ export default function HomeScreen() {
       style={[styles.container, { backgroundColor: c.bg }]}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
     >
+      <View style={Platform.OS === 'web' ? styles.webWrapper : undefined}>
       {/* ── Hero Card ── */}
       <View style={styles.heroSection}>
         <LinearGradient
@@ -247,6 +248,7 @@ export default function HomeScreen() {
           <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>⚙️ Settings</Text>
         </TouchableOpacity>
       </View>
+      </View>
     </ScrollView>
   );
 }
@@ -380,7 +382,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   featureCard: {
-    width: (width - 50) / 2,
+    width: '46%',
+    maxWidth: 280,
     borderRadius: 18,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -419,4 +422,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   actionBtnText: { fontSize: 14, fontWeight: '600' },
+
+  // ── Web Responsive ──
+  webWrapper: {
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
+  },
 });
