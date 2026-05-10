@@ -9,9 +9,26 @@ export interface QuestionInput {
   explanation?: string;
 }
 
+export interface QuestionsResponse {
+  questions: QuestionInput[];
+}
+
 const QUESTIONS_SYSTEM_PROMPT = (count: number, multipleChoiceOnly: boolean) => `You are a quiz generator. Given key concepts and a topic, generate exactly ${count} questions.
 
-Output a JSON array of question objects. Each object must have:
+Output a JSON object with a "questions" field containing an array of question objects. Example format:
+{
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "question": "What is ...?",
+      "correctAnswer": "The correct answer",
+      "options": ["Correct option", "Wrong 1", "Wrong 2", "Wrong 3"],
+      "explanation": "Brief explanation"
+    }
+  ]
+}
+
+Each question object must have:
 - "type": "multiple_choice" or "short_answer"
 - "question": The question text
 - "correctAnswer": The correct answer (string)
@@ -23,7 +40,7 @@ Rules:
 - ${multipleChoiceOnly ? 'ALL questions must be type "multiple_choice"' : 'Mix question types (at least 1 of each)'}
 - Questions should test understanding, not trivia
 - Wrong options should be plausible
-- Output valid JSON array only, no markdown`;
+- Output valid JSON only, no markdown`;
 
 export async function generateQuestions(
   client: DeepseekClient,
@@ -40,35 +57,38 @@ export async function generateQuestions(
       system: QUESTIONS_SYSTEM_PROMPT(count, multipleChoiceOnly),
       temperature: 0.5,
       maxTokens: 4096,
+      responseFormat: 'json_object',
     },
   );
 
   const cleaned = response.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-  let parsed: any[];
+  let parsed: any;
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    throw new Error('Failed to parse LLM response as JSON array');
+    throw new Error('Failed to parse LLM response as JSON');
   }
 
-  if (!Array.isArray(parsed)) {
-    throw new Error('Expected array of questions');
+  const questions: any[] = parsed.questions || (Array.isArray(parsed) ? parsed : []);
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new Error('No questions found in response');
   }
 
   if (multipleChoiceOnly) {
-    const filtered = parsed.filter((q) => q.type === 'multiple_choice');
-    if (filtered.length !== parsed.length) {
+    const filtered = questions.filter((q: any) => q.type === 'multiple_choice');
+    if (filtered.length !== questions.length) {
       console.warn(
-        `[generateQuestions] LLM returned ${parsed.length - filtered.length} non-multiple-choice question(s) — filtered out (multipleChoiceOnly enabled)`,
+        `[generateQuestions] LLM returned ${questions.length - filtered.length} non-multiple-choice question(s) — filtered out (multipleChoiceOnly enabled)`,
       );
     }
     if (filtered.length === 0) {
       throw new Error('No valid multiple choice questions after filtering — LLM returned only short_answer questions');
     }
-    parsed = filtered;
+    questions.length = 0;
+    questions.push(...filtered);
   }
 
-  for (const q of parsed) {
+  for (const q of questions) {
     if (!q.type || !q.question || !q.correctAnswer) {
       throw new Error('Invalid question: missing required fields');
     }
@@ -77,5 +97,5 @@ export async function generateQuestions(
     }
   }
 
-  return parsed;
+  return questions;
 }

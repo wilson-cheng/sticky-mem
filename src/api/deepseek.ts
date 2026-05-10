@@ -13,6 +13,7 @@ export interface ChatOptions {
   maxTokens?: number;
   model?: string;
   timeoutMs?: number;
+  responseFormat?: 'text' | 'json_object';
 }
 
 export class DeepseekClient {
@@ -32,6 +33,7 @@ export class DeepseekClient {
       maxTokens = 1024,
       model = DEFAULT_MODEL,
       timeoutMs = DEFAULT_TIMEOUT_MS,
+      responseFormat,
     } = options;
 
     const fullMessages: Message[] = [];
@@ -55,6 +57,7 @@ export class DeepseekClient {
           messages: fullMessages,
           temperature,
           max_tokens: maxTokens,
+          ...(responseFormat === 'json_object' ? { response_format: { type: 'json_object' } } : {}),
         }),
         signal: controller.signal,
       });
