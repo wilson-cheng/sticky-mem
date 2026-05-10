@@ -109,7 +109,14 @@ export default function ManageContentScreen() {
       Alert.alert('Done', `Regenerated ${questions.length} questions for "${content.title}"`);
     } catch (e: any) {
       console.error('Regeneration failed:', e);
-      Alert.alert('Error', e.message || 'Failed to regenerate questions');
+      Alert.alert(
+        'Error',
+        `Failed to regenerate questions.\n\n${e.message || 'Unknown error'}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleRegenerate(content) },
+        ],
+      );
     } finally {
       setRegeneratingId(null);
     }

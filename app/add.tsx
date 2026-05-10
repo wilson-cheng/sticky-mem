@@ -129,7 +129,10 @@ export default function AddContentScreen() {
       Alert.alert(
         'Processing Failed',
         `The content was too long or the AI returned an invalid response.\n\n${e.message || 'Unknown error'}`,
-        [{ text: 'OK' }],
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => handleSaveAndGenerate() },
+        ],
       );
     } finally {
       setIsProcessing(false);
