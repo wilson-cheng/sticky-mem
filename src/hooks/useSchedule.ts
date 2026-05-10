@@ -21,9 +21,9 @@ export function useSchedule(repo: Repository | null) {
       const total = await repo.getTotalQuestionCount();
       const reviewed = await repo.getTodayReviewedCount();
       const correct = await repo.getTodayCorrectCount();
-      // Cap displayed count by questionsPerReview — home page shows round size, not total due
-      const questionsPerReview = useSettingsStore.getState().questionsPerReview;
-      const limit = questionsPerReview > 0 ? questionsPerReview : due.length;
+      // Cap displayed count by questionsPerDay — home page shows daily limit, not total due
+      const questionsPerDay = useSettingsStore.getState().questionsPerDay;
+      const limit = questionsPerDay > 0 ? questionsPerDay : due.length;
       setDueCount(Math.min(due.length, limit));
       setTotalQuestions(total);
       setTodayReviewed(reviewed);

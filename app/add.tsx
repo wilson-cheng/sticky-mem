@@ -175,7 +175,7 @@ export default function AddContentScreen() {
               <Text
                 key={ba.key}
                 style={[styles.burstEmoji, {
-                  transform: `translate(${tx}px, ${ty}px) scale(1)`,
+                  transform: [{ translateX: tx }, { translateY: ty }, { scale: 1 }],
                   opacity: 0.6,
                 }]}
               >

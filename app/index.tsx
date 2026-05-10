@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { initDatabase } from '../src/hooks/useDatabase';
 import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
+import { useSettingsStore } from '../src/store/settings';
 
 const { width } = Dimensions.get('window');
 
@@ -30,7 +31,18 @@ export default function HomeScreen() {
   const [streakDays, setStreakDays] = useState(0);
   const [totalCards, setTotalCards] = useState(0);
   const [hasContent, setHasContent] = useState(false);
+  const [todayStarted, setTodayStarted] = useState(false);
+  const [todayReviewed, setTodayReviewed] = useState(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const questionsPerDay = useSettingsStore((s) => s.questionsPerDay);
+  const lastReviewDate = useSettingsStore((s) => s.lastReviewDate);
+  const setLastReviewDate = useSettingsStore((s) => s.setLastReviewDate);
+  const today = new Date().toISOString().slice(0, 10);
+  const isFreshDay = lastReviewDate !== today;
+  const cappedDue = questionsPerDay > 0 ? Math.min(totalToReview, questionsPerDay) : totalToReview;
+  const remainingToday = Math.max(0, (questionsPerDay > 0 ? questionsPerDay : totalToReview) - todayReviewed);
+  const showReviewMore = !isFreshDay && remainingToday <= 0 && totalToReview > 0;
 
   // Pulse animation for CTA button
   useEffect(() => {
@@ -83,6 +95,10 @@ export default function HomeScreen() {
       setTotalToReview(dueCount);
       setStreakDays(streakCount);
       setTotalCards(totalCardCount);
+
+      // Track today's reviewed count for button mode logic
+      const reviewedToday = await repo.getTodayReviewedCount();
+      setTodayReviewed(reviewedToday);
     } catch (e) {
       console.error('Failed to load home stats:', e);
     }
@@ -98,7 +114,14 @@ export default function HomeScreen() {
       Alert.alert('All Caught Up', 'No cards due for review. Add more content to keep learning!');
       return;
     }
-    router.push('/review');
+    // Mark today as started
+    setLastReviewDate(today);
+    // Navigate with mode for bonus (Review More) vs normal
+    if (showReviewMore) {
+      router.push('/review?mode=bonus');
+    } else {
+      router.push('/review');
+    }
   };
 
   return (
@@ -164,9 +187,11 @@ export default function HomeScreen() {
           >
             <Text style={[styles.ctaEmoji]}>⭐</Text>
             <Text style={[styles.ctaText, { color: c.ctaTextColor }]}>
-              {totalToReview > 0
-                ? `Start Review (${totalToReview})`
-                : 'Start Review'}
+              {showReviewMore
+                ? t('home.reviewMore')
+                : isFreshDay
+                  ? `${t('home.startReview')} (${cappedDue})`
+                  : `${t('home.continueReview')} (${remainingToday})`}
             </Text>
             <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
           </LinearGradient>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QuestionCard from '../src/components/QuestionCard';
 import { initDatabase } from '../src/hooks/useDatabase';
@@ -25,7 +25,9 @@ export default function ReviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const questionsPerReview = useSettingsStore((s) => s.questionsPerReview);
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const isBonus = params.mode === 'bonus';
+  const questionsPerDay = useSettingsStore((s) => s.questionsPerDay);
   const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
   const c = useColors();
 
@@ -62,6 +64,14 @@ export default function ReviewScreen() {
         { text: t('settings.cancel'), style: 'cancel' },
         { text: t('review.leave'), style: 'destructive', onPress: () => router.back() },
       ]
+    );
+  };
+
+  const handleStopForNow = () => {
+    Alert.alert(
+      t('review.stopForNow'),
+      'Your progress has been saved! Come back anytime to continue.',
+      [{ text: 'OK', onPress: () => router.back() }]
     );
   };
 
@@ -104,8 +114,8 @@ export default function ReviewScreen() {
         ...shuffle(normalPriority),
       ];
 
-      // Apply questionsPerReview limit
-      const limit = questionsPerReview > 0 ? questionsPerReview : ordered.length;
+      // Apply questionsPerDay limit (skip in bonus / Review More mode)
+      let limit = questionsPerDay > 0 && !isBonus ? questionsPerDay : ordered.length;
       if (ordered.length > limit) {
         ordered = ordered.slice(0, limit);
       }
@@ -117,7 +127,7 @@ export default function ReviewScreen() {
     } finally {
       setLoading(false);
     }
-  }, [questionsPerReview]);
+  }, [questionsPerDay, isBonus]);
 
   useEffect(() => {
     loadCards();
@@ -455,6 +465,12 @@ export default function ReviewScreen() {
         showRemove={true}
         correctAutoAdvanceMs={5000}
       />
+
+      {!isBonus && (
+        <TouchableOpacity style={styles.stopBtn} onPress={handleStopForNow}>
+          <Text style={styles.stopBtnText}>{t('review.stopForNow')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -500,6 +516,14 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 32, paddingVertical: 14,
   },
   homeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  stopBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    marginBottom: 24,
+    marginHorizontal: 16,
+  },
+  stopBtnText: { fontSize: 14, fontWeight: '600', opacity: 0.6 },
   // Emoji burst
   burstEmoji: {
     position: 'absolute',

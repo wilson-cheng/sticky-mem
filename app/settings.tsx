@@ -97,7 +97,7 @@ export default function SettingsScreen() {
     apiKey, setApiKey, isConfigured,
     dailyReviewTarget, setDailyReviewTarget,
     questionsPerContent, setQuestionsPerContent,
-    questionsPerReview, setQuestionsPerReview,
+    questionsPerDay, setQuestionsPerDay,
     multipleChoiceOnly, setMultipleChoiceOnly,
     theme, setTheme,
     language, setLanguage,
@@ -225,19 +225,19 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.label, { color: c.textPrimary }]}>{t('settings.questionsPerReview')}</Text>
+      <Text style={[styles.label, { color: c.textPrimary }]}>{t('settings.questionsPerDay')}</Text>
       <Text style={[styles.hint, { color: c.textSecondary }]}>{t('settings.autoHint')}</Text>
       <View style={styles.row}>
         <TouchableOpacity
           style={[styles.numberButton, { backgroundColor: c.inputBg }]}
-          onPress={() => setQuestionsPerReview(Math.max(0, questionsPerReview - 1))}
+          onPress={() => setQuestionsPerDay(Math.max(0, questionsPerDay - 1))}
         >
           <Text style={[styles.numberButtonText, { color: c.textPrimary }]}>−</Text>
         </TouchableOpacity>
-        <Text style={[styles.numberValue, { color: c.textPrimary }]}>{questionsPerReview === 0 ? t('settings.auto') : questionsPerReview}</Text>
+        <Text style={[styles.numberValue, { color: c.textPrimary }]}>{questionsPerDay === 0 ? '∞' : questionsPerDay}</Text>
         <TouchableOpacity
           style={[styles.numberButton, { backgroundColor: c.inputBg }]}
-          onPress={() => setQuestionsPerReview(Math.min(50, questionsPerReview + 1))}
+          onPress={() => setQuestionsPerDay(Math.min(50, questionsPerDay + 1))}
         >
           <Text style={[styles.numberButtonText, { color: c.textPrimary }]}>+</Text>
         </TouchableOpacity>

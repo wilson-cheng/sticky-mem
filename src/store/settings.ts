@@ -14,8 +14,10 @@ interface SettingsState {
   incrementContentCount: () => void;
   questionsPerContent: number;
   setQuestionsPerContent: (n: number) => void;
-  questionsPerReview: number;
-  setQuestionsPerReview: (n: number) => void;
+  questionsPerDay: number;
+  setQuestionsPerDay: (n: number) => void;
+  lastReviewDate: string;
+  setLastReviewDate: (d: string) => void;
   theme: 'light' | 'dark';
   setTheme: (t: 'light' | 'dark') => void;
   language: 'en' | 'zh-Hans' | 'zh-Hant';
@@ -86,8 +88,10 @@ export const useSettingsStore = create<SettingsState>()(
       incrementContentCount: () => set((s) => ({ contentCount: s.contentCount + 1 })),
       questionsPerContent: 6,
       setQuestionsPerContent: (n: number) => set({ questionsPerContent: n }),
-      questionsPerReview: 0,
-      setQuestionsPerReview: (n: number) => set({ questionsPerReview: n }),
+      questionsPerDay: 10,
+      setQuestionsPerDay: (n: number) => set({ questionsPerDay: n }),
+      lastReviewDate: '',
+      setLastReviewDate: (d: string) => set({ lastReviewDate: d }),
       theme: 'light',
       setTheme: (t: 'light' | 'dark') => set({ theme: t }),
       language: 'en',
@@ -104,7 +108,8 @@ export const useSettingsStore = create<SettingsState>()(
         dailyReviewTarget: state.dailyReviewTarget,
         contentCount: state.contentCount,
         questionsPerContent: state.questionsPerContent,
-        questionsPerReview: state.questionsPerReview,
+        questionsPerDay: state.questionsPerDay,
+        lastReviewDate: state.lastReviewDate,
         theme: state.theme,
         language: state.language,
         multipleChoiceOnly: state.multipleChoiceOnly,
