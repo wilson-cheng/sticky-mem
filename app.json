@@ -28,7 +28,7 @@
       "bundler": "metro"
     },
     "experiments": {
-      "baseUrl": "/sticky-mem"
+      "baseUrl": ""
     },
     "plugins": [
       "expo-router",
