@@ -40,7 +40,7 @@ export default function HomeScreen() {
   const setLastReviewDate = useSettingsStore((s) => s.setLastReviewDate);
   const today = new Date().toISOString().slice(0, 10);
   const isFreshDay = lastReviewDate !== today;
-  const dueToday = Math.max(0, questionsPerDay - todayReviewed);
+  const dueToday = Math.min(Math.max(0, questionsPerDay - todayReviewed), totalToReview);
   const showReviewMore = !isFreshDay && dueToday <= 0 && totalToReview > 0;
 
   // Pulse animation for CTA button
@@ -189,8 +189,8 @@ export default function HomeScreen() {
               {showReviewMore
                 ? t('home.reviewMore')
                 : isFreshDay
-                  ? `${t('home.startReview')} (${Math.min(dueToday, totalToReview)})`
-                  : `${t('home.continueReview')} (${Math.min(dueToday, totalToReview)})`}
+                  ? `${t('home.startReview')} (${dueToday})`
+                  : `${t('home.continueReview')} (${dueToday})`}
             </Text>
             <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
           </LinearGradient>
