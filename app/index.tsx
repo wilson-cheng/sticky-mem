@@ -124,7 +124,8 @@ export default function HomeScreen() {
           style={[styles.heroCard, { borderColor: c.border }]}
         >
           <View style={styles.heroTop}>
-            <StickyMemLogo size={64} accentColor="#FFFFFF" />
+            <StickyMemLogo size={44} accentColor={c.accent} />
+            <Text style={styles.heroTitle}>StickyMem</Text>
           </View>
           <Text style={styles.heroSub}>Learn more, forget less 📚</Text>
           <View style={styles.heroStats}>
