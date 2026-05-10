@@ -96,7 +96,7 @@ export default function HomeScreen() {
       setTotalCards(totalCardCount);
 
       // Track today's reviewed count for button mode logic
-      const reviewedToday = await repo.getTodayReviewedCount();
+      const reviewedToday = await repo.getTodayCorrectCount();
       setTodayReviewed(reviewedToday);
     } catch (e) {
       console.error('Failed to load home stats:', e);
