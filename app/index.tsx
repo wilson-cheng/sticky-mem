@@ -2,9 +2,8 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Dimensions, Platform,
+  Animated, Dimensions, Platform, Image,
 } from 'react-native';
-import StickyMemLogo from '../src/components/StickyMemLogo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,10 +123,16 @@ export default function HomeScreen() {
           style={[styles.heroCard, { borderColor: c.border }]}
         >
           <View style={styles.heroTop}>
-            <StickyMemLogo size={44} accentColor={c.accent} />
-            <Text style={styles.heroTitle}>StickyMem</Text>
+            <Image
+              source={require('../assets/stickymem-cloud-icon.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.heroTitle}>StickyMem</Text>
+              <Text style={styles.heroSub}>Learn more, forget less 📚</Text>
+            </View>
           </View>
-          <Text style={styles.heroSub}>Learn more, forget less 📚</Text>
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatNum}>{totalCards}</Text>
@@ -279,19 +284,30 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   heroTop: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
+    gap: 14,
+  },
+  heroLogo: {
+    width: 64,
+    height: 64,
+  },
+  heroTextBlock: {
+    flexDirection: 'column',
+    gap: 4,
   },
   heroTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
+    textAlign: 'left',
   },
   heroSub: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
-    marginBottom: 20,
+    textAlign: 'left',
   },
   heroStats: {
     flexDirection: 'row',
