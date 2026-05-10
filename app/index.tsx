@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Dimensions, Platform, Image,
+  Animated, Dimensions, Platform,
 } from 'react-native';
+import StickyMemLogo from '../src/components/StickyMemLogo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,11 +124,7 @@ export default function HomeScreen() {
           style={[styles.heroCard, { borderColor: c.border }]}
         >
           <View style={styles.heroTop}>
-            <Image
-              source={require('../assets/stickymem-brain-icon.jpg')}
-              style={styles.heroLogoImage}
-              resizeMode="contain"
-            />
+            <StickyMemLogo size={64} accentColor="#FFFFFF" />
           </View>
           <Text style={styles.heroSub}>Learn more, forget less 📚</Text>
           <View style={styles.heroStats}>
@@ -283,10 +280,6 @@ const styles = StyleSheet.create({
   heroTop: {
     alignItems: 'center',
     marginBottom: 12,
-  },
-  heroLogoImage: {
-    width: 180,
-    height: 72,
   },
   heroTitle: {
     fontSize: 28,
