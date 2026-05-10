@@ -155,6 +155,7 @@ export default function HomeScreen() {
       {/* ── CTA Review Button ── */}
       <Animated.View style={[styles.ctaWrapper, { transform: [{ scale: pulseAnim }] }]}>
         <TouchableOpacity onPress={handleStartReview} activeOpacity={0.85}>
+          <View style={styles.ctaButtonClip}>
           <LinearGradient
             colors={c.ctaGradient as [string, string]}
             start={{ x: 0, y: 0 }}
@@ -169,6 +170,7 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
           </LinearGradient>
+          </View>
         </TouchableOpacity>
       </Animated.View>
 
@@ -295,7 +297,6 @@ const styles = StyleSheet.create({
   },
   heroTextBlock: {
     flexDirection: 'column',
-    gap: 4,
   },
   heroTitle: {
     fontSize: 28,
@@ -339,8 +340,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  ctaButton: {
+  ctaButtonClip: {
     borderRadius: 16,
+    overflow: 'hidden',
+  },
+  ctaButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
     flexDirection: 'row',
