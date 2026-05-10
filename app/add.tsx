@@ -165,73 +165,85 @@ export default function AddContentScreen() {
   // ─── Success Screen ─── //
   if (stage === 'success' && success) {
     return (
-      <LinearGradient colors={[c.accent + '10', c.bg, c.bg]} locations={[0, 0.3, 1]} style={styles.successContainer}>
-        {burstVisible && burstAnims.map((ba) => {
-          // Simple CSS-based burst (no Animated API complexity)
-          const tx = Math.cos(ba.angle) * ba.distance;
-          const ty = Math.sin(ba.angle) * ba.distance;
-          return (
-            <Text
-              key={ba.key}
-              style={[styles.burstEmoji, {
-                transform: `translate(${tx}px, ${ty}px) scale(1)`,
-                opacity: 0.6,
-              }]}
-            >
-              {ba.emoji}
-            </Text>
-          );
-        })}
-        <View style={{ alignItems: 'center', width: '100%' }}>
-          <Text style={styles.successIcon}>🎉</Text>
-          <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
-          <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
+      <View style={[styles.successContainer, { backgroundColor: c.bg }]}>
+        <LinearGradient colors={[c.accent + '10', c.bg, c.bg]} locations={[0, 0.3, 1]} style={styles.successGradientBg}>
+          {/* Emoji burst */}
+          {burstVisible && burstAnims.map((ba) => {
+            const tx = Math.cos(ba.angle) * ba.distance;
+            const ty = Math.sin(ba.angle) * ba.distance;
+            return (
+              <Text
+                key={ba.key}
+                style={[styles.burstEmoji, {
+                  transform: `translate(${tx}px, ${ty}px) scale(1)`,
+                  opacity: 0.6,
+                }]}
+              >
+                {ba.emoji}
+              </Text>
+            );
+          })}
 
-          {/* Summary */}
-          <View style={[styles.summarySection, { backgroundColor: c.cardBg }]}>
-            <Text style={[styles.summaryLabel, { color: c.textSecondary }]}>Summary</Text>
-            <Text style={[styles.summaryText, { color: c.textPrimary }]}>{success.summary}</Text>
-          </View>
+          {/* Scrollable center content */}
+          <ScrollView
+            style={styles.successScrollArea}
+            contentContainerStyle={styles.successScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.successIcon}>🎉</Text>
+            <Text style={[styles.successTitle, { color: c.textPrimary }]}>{t('add.successTitle')}</Text>
+            <Text style={[styles.successSubtitle, { color: c.textSecondary }]}>"{success.title}"</Text>
 
-          {/* Concept Pills */}
-          {success.concepts.length > 0 && (
-            <View style={styles.conceptsRow}>
-              {success.concepts.map((concept, i) => (
-                <View key={i} style={[styles.conceptPill, { backgroundColor: c.accent + '20' }]}>
-                  <Text style={[styles.conceptPillText, { color: c.accent }]}>{concept}</Text>
-                </View>
-              ))}
+            {/* Summary */}
+            <View style={[styles.summarySection, { backgroundColor: c.cardBg }]}>
+              <Text style={[styles.summaryLabel, { color: c.textSecondary }]}>Summary</Text>
+              <Text style={[styles.summaryText, { color: c.textPrimary }]}>{success.summary}</Text>
             </View>
-          )}
 
-          {/* Questions count */}
-          <View style={styles.countRow}>
-            <Text style={[styles.countNum, { color: c.accent }]}>{success.count}</Text>
-            <Text style={[styles.countLabel, { color: c.textSecondary }]}>{t('add.questionsGenerated')}</Text>
+            {/* Concept Pills */}
+            {success.concepts.length > 0 && (
+              <View style={styles.conceptsRow}>
+                {success.concepts.map((concept, i) => (
+                  <View key={i} style={[styles.conceptPill, { backgroundColor: c.accent + '20' }]}>
+                    <Text style={[styles.conceptPillText, { color: c.accent }]}>{concept}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Fixed bottom: count + buttons */}
+          <View style={[styles.successBottomBar, { backgroundColor: c.bg, borderTopColor: c.border }]}>
+            <View style={styles.countRow}>
+              <Text style={[styles.countNum, { color: c.accent }]}>{success.count}</Text>
+              <Text style={[styles.countLabel, { color: c.textSecondary }]}>{t('add.questionsGenerated')}</Text>
+            </View>
+            <View style={{ borderRadius: 12, overflow: 'hidden' }}>
+              <TouchableOpacity
+                style={[styles.reviewButton, { backgroundColor: c.accent }]}
+                onPress={() => {
+                  setSuccess(null);
+                  setStage('input');
+                  router.dismissAll();
+                  setTimeout(() => router.push('/review'), 50);
+                }}
+              >
+                <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={styles.homeButton}
+              onPress={() => {
+                setSuccess(null);
+                setStage('input');
+                router.replace('/');
+              }}
+            >
+              <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.reviewButton, { backgroundColor: c.accent }]}
-            onPress={() => {
-              setSuccess(null);
-              setStage('input');
-              router.dismissAll();
-              setTimeout(() => router.push('/review'), 50);
-            }}
-          >
-            <Text style={styles.reviewButtonText}>{t('add.startReview')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.homeButton}
-            onPress={() => {
-              setSuccess(null);
-              setStage('input');
-              router.replace('/');
-            }}
-          >
-            <Text style={[styles.homeButtonText, { color: c.textSecondary }]}>{t('add.backToHome')}</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
     );
   }
 
@@ -351,8 +363,26 @@ const styles = StyleSheet.create({
   processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18, opacity: 0.7 },
   // Success
   successContainer: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    padding: 32,
+    flex: 1,
+  },
+  successGradientBg: {
+    flex: 1,
+  },
+  successScrollArea: {
+    flex: 1,
+  },
+  successScrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  successBottomBar: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 12,
+    paddingBottom: 32,
+    borderTopWidth: 1,
   },
   successIcon: { fontSize: 72, marginBottom: 16 },
   successTitle: { fontSize: 26, fontWeight: '800', marginBottom: 8 },

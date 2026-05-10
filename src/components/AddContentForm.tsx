@@ -65,6 +65,7 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
           value={input}
           onChangeText={setInput}
           placeholder="Paste the content you want to remember..."
+          placeholderTextColor={c.textSecondary}
           multiline
           textAlignVertical="top"
         />
@@ -74,6 +75,7 @@ export default function AddContentForm({ onSubmit, isProcessing }: Props) {
           value={input}
           onChangeText={setInput}
           placeholder="https://example.com/article"
+          placeholderTextColor={c.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"

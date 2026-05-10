@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { View, TouchableOpacity, Text, Platform } from 'react-native';
 import { useColors } from '../src/theme/useColors';
 import { AlertThemeProvider } from '../src/components/AlertThemeProvider';
 
@@ -16,6 +16,15 @@ export default function RootLayout() {
     contentStyle: { backgroundColor: c.bg },
   }), [c.bg, c.headerBg, c.textPrimary]);
 
+  const backButton = useMemo(() => (
+    <TouchableOpacity
+      onPress={() => router.back()}
+      style={{ marginLeft: Platform.OS === 'web' ? 8 : 0, padding: 4 }}
+    >
+      <Text style={{ fontSize: 22, color: c.textPrimary, lineHeight: 22 }}>{'✕'}</Text>
+    </TouchableOpacity>
+  ), [c.textPrimary]);
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <AlertThemeProvider />
@@ -23,7 +32,11 @@ export default function RootLayout() {
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="add" options={{ title: 'Add Content', presentation: 'modal' }} />
+        <Stack.Screen name="add" options={{
+          title: 'Add Content',
+          presentation: 'modal',
+          headerLeft: () => backButton,
+        }} />
         <Stack.Screen name="review" options={{ title: 'Review', headerShown: false }} />
         <Stack.Screen name="progress" options={{ title: 'Progress' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
