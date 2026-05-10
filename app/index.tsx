@@ -40,9 +40,8 @@ export default function HomeScreen() {
   const setLastReviewDate = useSettingsStore((s) => s.setLastReviewDate);
   const today = new Date().toISOString().slice(0, 10);
   const isFreshDay = lastReviewDate !== today;
-  const cappedDue = questionsPerDay > 0 ? Math.min(totalToReview, questionsPerDay) : totalToReview;
-  const remainingToday = Math.max(0, (questionsPerDay > 0 ? questionsPerDay : totalToReview) - todayReviewed);
-  const showReviewMore = !isFreshDay && remainingToday <= 0 && totalToReview > 0;
+  const dueToday = Math.max(0, questionsPerDay - todayReviewed);
+  const showReviewMore = !isFreshDay && dueToday <= 0 && totalToReview > 0;
 
   // Pulse animation for CTA button
   useEffect(() => {
@@ -163,7 +162,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatNum}>{totalToReview}</Text>
+              <Text style={styles.heroStatNum}>{dueToday}</Text>
               <Text style={styles.heroStatLabel}>Due Today</Text>
             </View>
             <View style={styles.heroStatDivider} />
@@ -190,8 +189,8 @@ export default function HomeScreen() {
               {showReviewMore
                 ? t('home.reviewMore')
                 : isFreshDay
-                  ? `${t('home.startReview')} (${cappedDue})`
-                  : `${t('home.continueReview')} (${remainingToday})`}
+                  ? `${t('home.startReview')} (${Math.min(dueToday, totalToReview)})`
+                  : `${t('home.continueReview')} (${Math.min(dueToday, totalToReview)})`}
             </Text>
             <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
           </LinearGradient>
@@ -233,8 +232,8 @@ export default function HomeScreen() {
             style={styles.statCardGradient}
           >
             <Text style={styles.statIcon}>📅</Text>
-            <Text style={styles.statValue}>{totalToReview}</Text>
-            <Text style={styles.statLabel}>Due Now</Text>
+            <Text style={styles.statValue}>{todayReviewed}</Text>
+            <Text style={styles.statLabel}>Today Reviewed</Text>
           </LinearGradient>
         </View>
       </View>
