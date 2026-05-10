@@ -123,6 +123,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'progress.totalReviews': 'Total Reviews',
     'progress.daysTracked': 'Days Tracked',
     'progress.accuracyTrend': 'Accuracy Trend',
+    'progress.activityCalendar': 'Activity Calendar',
     'progress.empty': 'Start reviewing content to see your memory retention trend over time.',
   },
   'zh-Hans': {
@@ -242,6 +243,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'progress.totalReviews': '總複習次數',
     'progress.daysTracked': '記錄天數',
     'progress.accuracyTrend': '準確率趨勢',
+    'progress.activityCalendar': '活動日曆',
     'progress.empty': '開始複習內容，即可查看你的記憶保留趨勢。',
   },
   'zh-Hant': {
@@ -361,6 +363,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'progress.totalReviews': '總複習次數',
     'progress.daysTracked': '記錄天數',
     'progress.accuracyTrend': '準確率趨勢',
+    'progress.activityCalendar': '活動日曆',
     'progress.empty': '開始複習內容，即可查看你的記憶保留趨勢。',
   },
 };

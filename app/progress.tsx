@@ -4,7 +4,9 @@ import { initDatabase } from '../src/hooks/useDatabase';
 import type { DailyStats } from '../src/types';
 import { useColors } from '../src/theme/useColors';
 import ProgressChart from '../src/components/ProgressChart';
+import CalendarMonth from '../src/components/CalendarMonth';
 import { useTranslation } from '../src/i18n/useTranslation';
+import { useSettingsStore } from '../src/store/settings';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProgressScreen() {
@@ -15,6 +17,7 @@ export default function ProgressScreen() {
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const c = useColors();
+  const questionsPerDay = useSettingsStore((s) => s.questionsPerDay);
 
   useEffect(() => {
     loadStats();
@@ -93,10 +96,15 @@ export default function ProgressScreen() {
         </View>
       </View>
 
+      {/* Accuracy Trend Chart */}
       <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('progress.accuracyTrend')}</Text>
       <View style={[styles.chartCard, { backgroundColor: c.cardBg }]}>
         <ProgressChart data={stats} />
       </View>
+
+      {/* Activity Calendar */}
+      <Text style={[styles.sectionTitle, { color: c.textPrimary, marginTop: 24 }]}>{t('progress.activityCalendar')}</Text>
+      <CalendarMonth stats={stats} questionsPerDay={questionsPerDay} />
 
       {stats.length === 0 && (
         <Text style={[styles.emptyText, { color: c.textSecondary }]}>
