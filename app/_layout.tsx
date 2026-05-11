@@ -26,9 +26,16 @@ export default function RootLayout() {
   ), [c.textPrimary]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
+    <View style={[
+      { flex: 1, backgroundColor: c.bg },
+      Platform.OS === 'web' && { alignItems: 'center' },
+    ]}>
       <AlertThemeProvider />
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View style={[
+        { flex: 1 },
+        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
+      ]}>
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -42,6 +49,7 @@ export default function RootLayout() {
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         <Stack.Screen name="manage" options={{ title: 'Manage' }} />
       </Stack>
+      </View>
     </View>
   );
 }

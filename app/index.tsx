@@ -130,7 +130,7 @@ export default function HomeScreen() {
     ]}>
       <View style={[
         { flex: 1 },
-        Platform.OS === 'web' && { width: '100%', maxWidth: 600 },
+        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
       ]}>
       <ScrollView
         style={styles.container}
