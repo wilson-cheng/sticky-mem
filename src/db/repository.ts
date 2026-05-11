@@ -159,7 +159,7 @@ export class Repository {
       `SELECT q.*, c.easiness, c.interval, c.repetitions, c.next_review_at, c.last_review_at, ct.title as content_title
        FROM questions q
        INNER JOIN cards c ON q.id = c.question_id
-       INNER JOIN content ct ON q.content_id = ct.id
+       LEFT JOIN contents ct ON q.content_id = ct.id
        WHERE c.next_review_at <= ?
        ORDER BY c.next_review_at ASC`,
       [now]
