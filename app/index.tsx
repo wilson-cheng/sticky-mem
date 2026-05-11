@@ -1,25 +1,52 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import Alert from '../src/utils/alertWrapper';
+import React, { useCallback, useEffect, useState, useRef } from "react";
+import Alert from "../src/utils/alertWrapper";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, Dimensions, Platform, Image,
-} from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { initDatabase } from '../src/hooks/useDatabase';
-import { useColors } from '../src/theme/useColors';
-import { useTranslation } from '../src/i18n/useTranslation';
-import { useSettingsStore } from '../src/store/settings';
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Platform,
+  Image,
+} from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { initDatabase } from "../src/hooks/useDatabase";
+import { useColors } from "../src/theme/useColors";
+import { useTranslation } from "../src/i18n/useTranslation";
+import { useSettingsStore } from "../src/store/settings";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 // ─── Feature card data ───
 const FEATURES = [
-  { key: 'chat', emoji: '💬', label: 'Chat & Learn', desc: 'Review with AI-powered flashcards' },
-  { key: 'knowledge', emoji: '🧠', label: 'Knowledge Base', desc: 'Your personal content library' },
-  { key: 'progress', emoji: '📊', label: 'Progress', desc: 'Track your learning stats' },
-  { key: 'cards', emoji: '🃏', label: 'All Cards', desc: 'Browse every flashcard' },
+  {
+    key: "chat",
+    emoji: "💬",
+    label: "Chat & Learn",
+    desc: "Review with AI-powered flashcards",
+  },
+  {
+    key: "knowledge",
+    emoji: "🧠",
+    label: "Knowledge Base",
+    desc: "Your personal content library",
+  },
+  {
+    key: "progress",
+    emoji: "📊",
+    label: "Progress",
+    desc: "Track your learning stats",
+  },
+  {
+    key: "cards",
+    emoji: "🃏",
+    label: "All Cards",
+    desc: "Browse every flashcard",
+  },
 ];
 
 export default function HomeScreen() {
@@ -40,15 +67,26 @@ export default function HomeScreen() {
   const setLastReviewDate = useSettingsStore((s) => s.setLastReviewDate);
   const today = new Date().toISOString().slice(0, 10);
   const isFreshDay = lastReviewDate !== today;
-  const dueToday = Math.min(Math.max(0, questionsPerDay - todayReviewed), totalToReview);
+  const dueToday = Math.min(
+    Math.max(0, questionsPerDay - todayReviewed),
+    totalToReview,
+  );
   const showReviewMore = !isFreshDay && dueToday <= 0 && totalToReview > 0;
 
   // Pulse animation for CTA button
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.03,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
       ]),
     );
     anim.start();
@@ -99,27 +137,33 @@ export default function HomeScreen() {
       const reviewedToday = await repo.getTodayCorrectCount();
       setTodayReviewed(reviewedToday);
     } catch (e) {
-      console.error('Failed to load home stats:', e);
+      console.error("Failed to load home stats:", e);
     }
   };
 
   const handleStartReview = () => {
     if (!hasContent) {
-      Alert.alert('No Content Yet', 'Add some content first to start reviewing!');
-      router.push('/add');
+      Alert.alert(
+        "No Content Yet",
+        "Add some content first to start reviewing!",
+      );
+      router.push("/add");
       return;
     }
     if (totalToReview === 0) {
-      Alert.alert('All Caught Up', 'No cards due for review. Add more content to keep learning!');
+      Alert.alert(
+        "All Caught Up",
+        "No cards due for review. Add more content to keep learning!",
+      );
       return;
     }
     // Mark today as started
     setLastReviewDate(today);
     // Navigate with mode for bonus (Review More) vs normal
     if (showReviewMore) {
-      router.push('/review?mode=bonus');
+      router.push("/review?mode=bonus");
     } else {
-      router.push('/review');
+      router.push("/review");
     }
   };
 
@@ -135,7 +179,7 @@ export default function HomeScreen() {
         >
           <View style={styles.heroTop}>
             <Image
-              source={require('../assets/stickymem-cloud-icon.png')}
+              source={require("../assets/stickymem-cloud-icon.png")}
               style={styles.heroLogo}
               resizeMode="contain"
             />
@@ -164,25 +208,29 @@ export default function HomeScreen() {
       </View>
 
       {/* ── CTA Review Button ── */}
-      <Animated.View style={[styles.ctaWrapper, { transform: [{ scale: pulseAnim }] }]}>
+      <Animated.View
+        style={[styles.ctaWrapper, { transform: [{ scale: pulseAnim }] }]}
+      >
         <TouchableOpacity onPress={handleStartReview} activeOpacity={0.85}>
           <View style={styles.ctaButtonClip}>
-          <LinearGradient
-            colors={c.ctaGradient as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.ctaButton}
-          >
-            <Text style={[styles.ctaEmoji]}>⭐</Text>
-            <Text style={[styles.ctaText, { color: c.ctaTextColor }]}>
-              {showReviewMore
-                ? t('home.reviewMore')
-                : isFreshDay
-                  ? `${t('home.startReview')} (${dueToday})`
-                  : `${t('home.continueReview')} (${dueToday})`}
-            </Text>
-            <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>→</Text>
-          </LinearGradient>
+            <LinearGradient
+              colors={c.ctaGradient as [string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ctaButton}
+            >
+              <Text style={[styles.ctaEmoji]}>⭐</Text>
+              <Text style={[styles.ctaText, { color: c.ctaTextColor }]}>
+                {showReviewMore
+                  ? t("home.reviewMore")
+                  : isFreshDay
+                    ? `${t("home.startReview")} (${dueToday})`
+                    : `${t("home.continueReview")} (${dueToday})`}
+              </Text>
+              <Text style={[styles.ctaChevron, { color: c.ctaTextColor }]}>
+                →
+              </Text>
+            </LinearGradient>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -228,19 +276,26 @@ export default function HomeScreen() {
       </View>
 
       {/* ── Feature Grid ── */}
-      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Explore</Text>
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
+        Explore
+      </Text>
       <View style={styles.featureGrid}>
         {FEATURES.map((feature, i) => {
-          const gradientColors = [c.featureGradient1, c.featureGradient2, c.featureGradient3, c.featureGradient4][i] as [string, string];
+          const gradientColors = [
+            c.featureGradient1,
+            c.featureGradient2,
+            c.featureGradient3,
+            c.featureGradient4,
+          ][i] as [string, string];
           return (
             <TouchableOpacity
               key={feature.key}
               style={styles.featureCard}
               onPress={() => {
-                if (feature.key === 'progress') router.push('/progress');
-                else if (feature.key === 'knowledge') router.push('/manage');
-                else if (feature.key === 'cards') router.push('/review');
-                else router.push('/add');
+                if (feature.key === "progress") router.push("/progress");
+                else if (feature.key === "knowledge") router.push("/manage");
+                else if (feature.key === "cards") router.push("/review");
+                else router.push("/add");
               }}
               activeOpacity={0.85}
             >
@@ -260,30 +315,44 @@ export default function HomeScreen() {
       </View>
 
       {/* ── Quick Actions ── */}
-      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>Quick Actions</Text>
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>
+        Quick Actions
+      </Text>
       <View style={styles.actionRow}>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: c.cardBg, borderColor: c.border }]}
-          onPress={() => router.push('/add')}
+          style={[
+            styles.actionBtn,
+            { backgroundColor: c.cardBg, borderColor: c.border },
+          ]}
+          onPress={() => router.push("/add")}
         >
-          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>➕ Add Content</Text>
+          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>
+            ➕ Add Content
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: c.cardBg, borderColor: c.border }]}
-          onPress={() => router.push('/settings')}
+          style={[
+            styles.actionBtn,
+            { backgroundColor: c.cardBg, borderColor: c.border },
+          ]}
+          onPress={() => router.push("/settings")}
         >
-          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>⚙️ Settings</Text>
+          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>
+            ⚙️ Settings
+          </Text>
         </TouchableOpacity>
       </View>
     </>
   );
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     return (
-      <View style={[
-        { flex: 1, backgroundColor: c.bg },
-        Platform.OS === 'web' && { alignItems: 'center' },
-      ]}>
+      <View
+        style={[
+          { flex: 1, backgroundColor: c.bg },
+          Platform.OS === "web" && { alignItems: "center" },
+        ]}
+      >
         <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
           {renderContent()}
         </View>
@@ -292,20 +361,27 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[
-      { flex: 1, backgroundColor: c.bg },
-      Platform.OS === 'web' && { alignItems: 'center' },
-    ]}>
-      <View style={[
-        { flex: 1 },
-        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
-      ]}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+    <View
+      style={[
+        { flex: 1, backgroundColor: c.bg },
+        Platform.OS === "web" && { alignItems: "center" },
+      ]}
+    >
+      <View
+        style={[
+          { flex: 1 },
+          Platform.OS === "web" && { width: "100%", maxWidth: 1024 },
+        ]}
       >
-        {renderContent()}
-      </ScrollView>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 16 },
+          ]}
+        >
+          {renderContent()}
+        </ScrollView>
       </View>
     </View>
   );
@@ -320,18 +396,20 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: 24,
     padding: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 0,
-    shadowColor: '#7C4DFF',
+    shadowColor: "#7C4DFF",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
   },
   heroTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
+    marginLeft: "auto",
+    marginRight: "auto",
     gap: 14,
   },
   heroLogo: {
@@ -339,45 +417,45 @@ const styles = StyleSheet.create({
     height: 64,
   },
   heroTextBlock: {
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   heroTitle: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
     letterSpacing: -0.5,
-    textAlign: 'left',
+    textAlign: "left",
   },
   heroSub: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'left',
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "left",
   },
   heroStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
-  heroStat: { flex: 1, alignItems: 'center' },
+  heroStat: { flex: 1, alignItems: "center" },
   heroStatNum: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   heroStatLabel: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     marginTop: 2,
   },
   heroStatDivider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: "rgba(255,255,255,0.3)",
   },
 
   // ── CTA ──
   ctaWrapper: {
     marginBottom: 24,
-    shadowColor: '#FFB300',
+    shadowColor: "#FFB300",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -385,34 +463,34 @@ const styles = StyleSheet.create({
   },
   ctaButtonClip: {
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   ctaButton: {
     paddingVertical: 16,
     paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   ctaEmoji: { fontSize: 22 },
   ctaText: {
     fontSize: 19,
-    fontWeight: '800',
+    fontWeight: "800",
   },
-  ctaChevron: { fontSize: 20, fontWeight: '700' },
+  ctaChevron: { fontSize: 20, fontWeight: "700" },
 
   // ── Stats Row ──
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginBottom: 24,
   },
   statCard: {
     flex: 1,
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -420,41 +498,41 @@ const styles = StyleSheet.create({
   },
   statCardGradient: {
     padding: 14,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   statIcon: { fontSize: 22 },
   statValue: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   statLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
   },
 
   // ── Section Title ──
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 12,
   },
 
   // ── Feature Grid ──
   featureGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     marginBottom: 24,
   },
   featureCard: {
-    width: '48%',
-    maxWidth: 300,
+    width: "48.5%",
+    // maxWidth: 300,
     borderRadius: 18,
-    overflow: 'hidden',
-    shadowColor: '#000',
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -462,32 +540,32 @@ const styles = StyleSheet.create({
   },
   featureCardGradient: {
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
     minHeight: 140,
   },
   featureEmoji: { fontSize: 30 },
   featureLabel: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textAlign: "center",
   },
   featureDesc: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.85)',
-    textAlign: 'center',
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
     lineHeight: 15,
   },
 
   // ── Quick Actions ──
-  actionRow: { flexDirection: 'row', gap: 10 },
+  actionRow: { flexDirection: "row", gap: 10 },
   actionBtn: {
     flex: 1,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1.5,
   },
-  actionBtnText: { fontSize: 14, fontWeight: '600' },
+  actionBtnText: { fontSize: 14, fontWeight: "600" },
 });
