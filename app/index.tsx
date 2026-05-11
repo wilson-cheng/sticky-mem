@@ -123,19 +123,8 @@ export default function HomeScreen() {
     }
   };
 
-  return (
-    <View style={[
-      { flex: 1, backgroundColor: c.bg },
-      Platform.OS === 'web' && { alignItems: 'center' },
-    ]}>
-      <View style={[
-        { flex: 1 },
-        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
-      ]}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
-      >
+  const renderContent = () => (
+    <>
       {/* ── Hero Card ── */}
       <View style={styles.heroSection}>
         <LinearGradient
@@ -286,7 +275,37 @@ export default function HomeScreen() {
           <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>⚙️ Settings</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[
+        { flex: 1, backgroundColor: c.bg },
+        Platform.OS === 'web' && { alignItems: 'center' },
+      ]}>
+        <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
+          {renderContent()}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[
+      { flex: 1, backgroundColor: c.bg },
+      Platform.OS === 'web' && { alignItems: 'center' },
+    ]}>
+      <View style={[
+        { flex: 1 },
+        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
+      ]}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+      >
+        {renderContent()}
+      </ScrollView>
       </View>
     </View>
   );

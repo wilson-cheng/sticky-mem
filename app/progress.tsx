@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { initDatabase } from '../src/hooks/useDatabase';
 import type { DailyStats } from '../src/types';
 import { useColors } from '../src/theme/useColors';
@@ -57,7 +57,7 @@ export default function ProgressScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content} scrollEnabled={Platform.OS !== 'web'}>
       {/* Hero */}
       {totalReviewed > 0 && (
         <LinearGradient

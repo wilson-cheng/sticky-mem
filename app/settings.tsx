@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, Platform,
 } from 'react-native';
 import { useTranslation } from '../src/i18n/useTranslation';
 import { useSettingsStore } from '../src/store/settings';
@@ -143,7 +143,7 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content} scrollEnabled={Platform.OS !== 'web'}>
       <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{t('settings.title')}</Text>
       <Text style={[styles.description, { color: c.textSecondary }]}>
         {t('settings.description')}

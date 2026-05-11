@@ -188,6 +188,7 @@ export default function AddContentScreen() {
           <ScrollView
             style={styles.successScrollArea}
             contentContainerStyle={styles.successScrollContent}
+            scrollEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
           >
             <Text style={styles.successIcon}>🎉</Text>
@@ -297,6 +298,7 @@ export default function AddContentScreen() {
           <ScrollView
             style={[styles.container, { backgroundColor: c.bg }]}
             keyboardShouldPersistTaps="handled"
+            scrollEnabled={Platform.OS !== 'web'}
           >
             {stage === 'input' && (
               <>

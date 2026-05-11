@@ -28,13 +28,23 @@ export default function RootLayout() {
   return (
     <View style={[
       { flex: 1, backgroundColor: c.bg },
-      Platform.OS === 'web' && { alignItems: 'center' },
+      Platform.OS === 'web' && {
+        width: '100%',
+        minHeight: '100vh',
+        overflowY: 'auto',
+        alignItems: 'center',
+      },
     ]}>
       <AlertThemeProvider />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={[
         { flex: 1 },
-        Platform.OS === 'web' && { width: '100%', maxWidth: 1024 },
+        Platform.OS === 'web' && {
+          flex: 0,
+          width: '100%',
+          maxWidth: 1024,
+          minHeight: '100vh',
+        },
       ]}>
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" options={{ title: 'StickyMem', headerShown: false }} />

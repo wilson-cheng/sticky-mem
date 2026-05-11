@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { initDatabase } from '../src/hooks/useDatabase';
@@ -182,7 +182,7 @@ export default function ManageContentScreen() {
 
   return (
     <>
-      <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content}>
+      <ScrollView style={[styles.container, { backgroundColor: c.bg }]} contentContainerStyle={styles.content} scrollEnabled={Platform.OS !== 'web'}>
         <Text style={[styles.title, { color: c.textPrimary }]}>Your Content</Text>
         {contents.length === 0 ? (
           <View style={styles.emptyState}>
