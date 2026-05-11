@@ -452,7 +452,7 @@ export default function ReviewScreen() {
           <View
             style={[
               styles.progressFill,
-              { width: `${(currentIndex / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
+              { width: `${(stats.total / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
             ]}
           />
         </View>
