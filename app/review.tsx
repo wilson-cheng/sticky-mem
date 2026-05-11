@@ -35,6 +35,7 @@ export default function ReviewScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ correct: 0, total: 0 });
+  const [todayBaseline, setTodayBaseline] = useState(0);
   const [sessionDone, setSessionDone] = useState(false);
   const repoRef = useRef<Awaited<ReturnType<typeof initDatabase>> | null>(null);
   const [sessionStartTime] = useState(Date.now());
@@ -82,6 +83,8 @@ export default function ReviewScreen() {
       repoRef.current = repo;
 
       let due = await repo.getDueCards(Date.now());
+      const correctToday = await repo.getTodayCorrectCount();
+      setTodayBaseline(correctToday);
 
       // Sort: prioritize questions with wrong/IDK history
       // Cards with fewer repetitions or longer-ago reviews come first
@@ -440,7 +443,7 @@ export default function ReviewScreen() {
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
           {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
         </Text>
-        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{stats.total}/{reviewQueue.length}</Text>
+        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{todayBaseline + stats.total}/{reviewQueue.length}</Text>
       </View>
 
       {/* Progress bar */}
