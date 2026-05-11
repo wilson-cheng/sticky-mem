@@ -31,7 +31,7 @@ export default function ReviewScreen() {
   const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
   const c = useColors();
 
-  const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card })[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card; contentTitle?: string })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ correct: 0, total: 0 });
@@ -440,7 +440,7 @@ export default function ReviewScreen() {
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
           {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
         </Text>
-        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{currentIndex + 1}/{reviewQueue.length}</Text>
+        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{stats.total}/{reviewQueue.length}</Text>
       </View>
 
       {/* Progress bar */}
@@ -454,6 +454,15 @@ export default function ReviewScreen() {
           />
         </View>
       </View>
+
+      {/* Source label */}
+      {currentQuestion.contentTitle && (
+        <View style={[styles.sourceChip, { backgroundColor: c.statBoxBg }]}>
+          <Text style={[styles.sourceLabel, { color: c.textSecondary }]} numberOfLines={1}>
+            📄 {currentQuestion.contentTitle}
+          </Text>
+        </View>
+      )}
 
       <QuestionCard
         key={currentQuestion.id}
@@ -490,6 +499,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: '700' },
   headerProgress: { fontSize: 14, fontWeight: '600' },
   progressContainer: { paddingHorizontal: 16, marginBottom: 8 },
+  sourceChip: {
+    marginHorizontal: 16,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  sourceLabel: { fontSize: 12, fontWeight: '500' },
   progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
   doneLogo: { width: 100, height: 100, borderRadius: 20, marginBottom: 16 },

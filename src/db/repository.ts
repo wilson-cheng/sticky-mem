@@ -156,9 +156,10 @@ export class Repository {
 
   async getDueCards(now: number): Promise<(Question & { card: Card })[]> {
     const rows = await this.db.query<any[]>(
-      `SELECT q.*, c.easiness, c.interval, c.repetitions, c.next_review_at, c.last_review_at
+      `SELECT q.*, c.easiness, c.interval, c.repetitions, c.next_review_at, c.last_review_at, ct.title as content_title
        FROM questions q
        INNER JOIN cards c ON q.id = c.question_id
+       INNER JOIN content ct ON q.content_id = ct.id
        WHERE c.next_review_at <= ?
        ORDER BY c.next_review_at ASC`,
       [now]
@@ -172,6 +173,7 @@ export class Repository {
       options: r.options ? this.shuffleOptions(JSON.parse(r.options)) : undefined,
       explanation: r.explanation ?? undefined,
       createdAt: r.created_at,
+      contentTitle: r.content_title ?? undefined,
       card: {
         questionId: r.id,
         easiness: r.easiness,
