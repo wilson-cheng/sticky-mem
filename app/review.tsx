@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import Alert from '../src/utils/alertWrapper';
-import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Modal, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QuestionCard from '../src/components/QuestionCard';
@@ -31,7 +31,7 @@ export default function ReviewScreen() {
   const dailyReviewTarget = useSettingsStore((s) => s.dailyReviewTarget);
   const c = useColors();
 
-  const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card; contentTitle?: string })[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<(Question & { card: Card; contentTitle?: string; contentRawText?: string })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ correct: 0, total: 0 });
@@ -39,6 +39,7 @@ export default function ReviewScreen() {
   const [sessionDone, setSessionDone] = useState(false);
   const repoRef = useRef<Awaited<ReturnType<typeof initDatabase>> | null>(null);
   const [sessionStartTime] = useState(Date.now());
+  const [sourceViewerQuestion, setSourceViewerQuestion] = useState<typeof currentQuestion | null>(null);
 
   // Animated values for end screen
   const statAnim = useRef(new Animated.Value(0)).current;
@@ -434,37 +435,43 @@ export default function ReviewScreen() {
   if (!currentQuestion) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: c.bg }]}>
-      {/* Header with back button */}
-      <View style={[styles.header, { paddingTop: insets.top, backgroundColor: c.bg }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={[styles.backButtonText, { color: c.accent }]}>← {t('review.back')}</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-          {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
-        </Text>
-        <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{todayBaseline + stats.total}/{reviewQueue.length}</Text>
-      </View>
-
-      {/* Progress bar */}
-      <View style={styles.progressContainer}>
-        <View style={[styles.progressBg, { backgroundColor: c.border }]}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${((todayBaseline + stats.total) / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
-            ]}
-          />
+    <>
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        {/* Header with back button */}
+        <View style={[styles.header, { paddingTop: insets.top, backgroundColor: c.bg }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Text style={[styles.backButtonText, { color: c.accent }]}>← {t('review.back')}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
+            {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
+          </Text>
+          <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{todayBaseline + stats.total}/{reviewQueue.length}</Text>
         </View>
-      </View>
 
-      {/* Source label */}
+        {/* Progress bar */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBg, { backgroundColor: c.border }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${((todayBaseline + stats.total) / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
+              ]}
+            />
+          </View>
+        </View>
+
+      {/* Source label — tap to view source content */}
       {currentQuestion.contentTitle && (
-        <View style={[styles.sourceChip, { backgroundColor: c.statBoxBg }]}>
+        <TouchableOpacity
+          style={[styles.sourceChip, { backgroundColor: c.statBoxBg }]}
+          onPress={() => setSourceViewerQuestion(currentQuestion)}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.sourceLabel, { color: c.textSecondary }]} numberOfLines={1}>
             📄 {currentQuestion.contentTitle}
           </Text>
-        </View>
+          <Text style={[styles.sourceIcon, { color: c.textSecondary }]}> ↗</Text>
+        </TouchableOpacity>
       )}
 
       <QuestionCard
@@ -483,7 +490,43 @@ export default function ReviewScreen() {
           <Text style={styles.stopBtnText}>{t('review.stopForNow')}</Text>
         </TouchableOpacity>
       )}
-    </View>
+
+      </View>
+
+      {/* Source viewer modal */}
+      <Modal
+        visible={!!sourceViewerQuestion}
+        animationType="slide"
+        onRequestClose={() => setSourceViewerQuestion(null)}
+      >
+        {sourceViewerQuestion && (
+          <View style={[styles.modalContainer, { backgroundColor: c.bg, paddingTop: insets.top }]}>
+            {/* Modal header */}
+            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
+              <TouchableOpacity onPress={() => setSourceViewerQuestion(null)}>
+                <Text style={[styles.modalCloseBtn, { color: c.accent }]}>Close</Text>
+              </TouchableOpacity>
+              <View style={styles.modalHeaderCenter}>
+                <Text style={[styles.modalHeaderTitle, { color: c.textPrimary }]} numberOfLines={1}>
+                  {sourceViewerQuestion.contentTitle}
+                </Text>
+              </View>
+              <View style={{ width: 50 }} />
+            </View>
+
+            {/* Source content */}
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={styles.modalBodyContent}
+            >
+              <Text style={[styles.modalContentText, { color: c.textPrimary }]}>
+                {sourceViewerQuestion.contentRawText || 'No source content available.'}
+              </Text>
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
+    </>
   );
 }
 
@@ -509,8 +552,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sourceLabel: { fontSize: 12, fontWeight: '500' },
+  sourceIcon: { fontSize: 12, fontWeight: '600' },
   progressBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
   doneLogo: { width: 100, height: 100, borderRadius: 20, marginBottom: 16 },
@@ -549,5 +595,42 @@ const styles = StyleSheet.create({
   burstEmoji: {
     position: 'absolute',
     fontSize: 28,
+  },
+  // Source viewer modal
+  modalContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  modalCloseBtn: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modalHeaderCenter: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  modalHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalBodyContent: {
+    padding: 16,
+    paddingBottom: 48,
+  },
+  modalContentText: {
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

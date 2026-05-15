@@ -156,7 +156,7 @@ export class Repository {
 
   async getDueCards(now: number): Promise<(Question & { card: Card })[]> {
     const rows = await this.db.query<any[]>(
-      `SELECT q.*, c.easiness, c.interval, c.repetitions, c.next_review_at, c.last_review_at, ct.title as content_title
+      `SELECT q.*, c.easiness, c.interval, c.repetitions, c.next_review_at, c.last_review_at, ct.title as content_title, ct.raw_text as content_raw_text
        FROM questions q
        INNER JOIN cards c ON q.id = c.question_id
        LEFT JOIN contents ct ON q.content_id = ct.id
@@ -174,6 +174,7 @@ export class Repository {
       explanation: r.explanation ?? undefined,
       createdAt: r.created_at,
       contentTitle: r.content_title ?? undefined,
+      contentRawText: r.content_raw_text ?? undefined,
       card: {
         questionId: r.id,
         easiness: r.easiness,
