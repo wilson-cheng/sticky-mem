@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import Alert from '../src/utils/alertWrapper';
-import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Modal, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import QuestionCard from '../src/components/QuestionCard';
 import { initDatabase } from '../src/hooks/useDatabase';
 import type { Question, Card, ReviewRecord } from '../src/types';
@@ -11,6 +12,7 @@ import { useSettingsStore } from '../src/store/settings';
 import { useColors } from '../src/theme/useColors';
 import { useTranslation } from '../src/i18n/useTranslation';
 import { LinearGradient } from 'expo-linear-gradient';
+import { marked } from 'marked';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -515,14 +517,70 @@ export default function ReviewScreen() {
             </View>
 
             {/* Source content */}
-            <ScrollView
+            <WebView
               style={styles.modalBody}
-              contentContainerStyle={styles.modalBodyContent}
-            >
-              <Text style={[styles.modalContentText, { color: c.textPrimary }]}>
-                {sourceViewerQuestion.contentRawText || 'No source content available.'}
-              </Text>
-            </ScrollView>
+              originWhitelist={['*']}
+              source={{
+                html: `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 16px;
+    margin: 0;
+    color: ${c.textPrimary};
+    background-color: ${c.bg};
+  }
+  h1, h2, h3 { font-weight: 700; margin-top: 1.2em; margin-bottom: 0.4em; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 19px; }
+  h3 { font-size: 17px; }
+  p { margin: 0 0 0.8em 0; }
+  ul, ol { padding-left: 20px; margin: 0 0 0.8em 0; }
+  li { margin-bottom: 0.3em; }
+  code {
+    font-family: 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+    background-color: ${c.inputBg};
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    background-color: ${c.inputBg};
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0 0 0.8em 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  blockquote {
+    border-left: 3px solid ${c.accent};
+    margin: 0 0 0.8em 0;
+    padding: 4px 12px;
+    opacity: 0.85;
+  }
+  a { color: ${c.accent}; }
+  img { max-width: 100%; border-radius: 8px; }
+  hr { border: none; border-top: 1px solid ${c.border}; margin: 1em 0; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 0.8em 0; }
+  th, td { border: 1px solid ${c.border}; padding: 8px; text-align: left; }
+  th { font-weight: 600; background-color: ${c.inputBg}; }
+</style>
+</head>
+<body>
+${marked.parse(sourceViewerQuestion.contentRawText || '', { async: false }) as string}
+</body>
+</html>`,
+              }}
+              scrollEnabled={true}
+            />
           </View>
         )}
       </Modal>
@@ -624,13 +682,5 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     flex: 1,
-  },
-  modalBodyContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  modalContentText: {
-    fontSize: 15,
-    lineHeight: 22,
   },
 });
