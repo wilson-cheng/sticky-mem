@@ -27,6 +27,39 @@ export default function ManageContentScreen() {
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingContent, setEditingContent] = useState<Content | null>(null);
 
+  /** Strip HTML tags and markdown formatting for clean plain-text preview */
+  const stripFormatting = (text: string): string => {
+    return text
+      // Remove fenced code blocks (```...```)
+      .replace(/```[\s\S]*?```/g, '')
+      // Remove inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, '')
+      // Remove images ![alt](url)
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      // Remove links [text](url) → text
+      .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
+      // Remove markdown bold/italic ~~ ** __ * _
+      .replace(/(\*{1,3}|_{1,3}|~~)(.*?)\1/g, '$2')
+      // Remove heading markers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove blockquote markers
+      .replace(/^>\s*/gm, '')
+      // Remove list markers (-, *, +, 1.)
+      .replace(/^[\s]*[-*+]\s+/gm, '')
+      .replace(/^[\s]*\d+\.\s+/gm, '')
+      // Remove horizontal rules
+      .replace(/^[-*_]{3,}\s*$/gm, '')
+      // Remove table pipes and separator rows
+      .replace(/[|]/g, ' ')
+      .replace(/^[-:\s|]+$/gm, '')
+      // Collapse multiple newlines
+      .replace(/\n{3,}/g, '\n\n')
+      // Trim
+      .trim();
+  };
+
   const loadContents = async () => {
     try {
       const repo = await initDatabase();
@@ -204,8 +237,8 @@ export default function ManageContentScreen() {
               </View>
 
               {/* Preview of content */}
-              <Text style={[styles.contentPreview, { color: c.textSecondary }]} numberOfLines={2}>
-                {item.rawText?.slice(0, 150) || 'No content'}
+              <Text style={[styles.contentPreview, { color: c.textSecondary }]} numberOfLines={3}>
+                {item.rawText ? stripFormatting(item.rawText).slice(0, 180) || 'No content' : 'No content'}
               </Text>
 
               {/* Action buttons row */}
