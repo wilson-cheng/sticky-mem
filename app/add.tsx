@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Alert from '../src/utils/alertWrapper';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Keyboard, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Keyboard, ActivityIndicator, Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AddContentForm from '../src/components/AddContentForm';
@@ -35,6 +35,19 @@ export default function AddContentScreen() {
     concepts: string[];
   } | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Processing timeline steps
+  const STEP_LABELS = [
+    t('add.stepDigest'),
+    t('add.stepGenerate'),
+    t('add.stepSave'),
+  ];
+  const [currentStep, setCurrentStep] = useState(0);
+  const completedStepsRef = useRef(new Set<number>()).current;
+  const stepAnimValues = useRef(
+    Array.from({ length: 3 }, () => new Animated.Value(0))
+  ).current;
+  const stepOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
@@ -87,17 +100,24 @@ export default function AddContentScreen() {
     try {
       // Step 1: Digest content
       setStatusMessage('Digesting content...');
+      setCurrentStep(0);
       const digest = await digestContent(apiClient, editingContent);
+      completedStepsRef.add(0);
+      Animated.spring(stepAnimValues[0], { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }).start();
 
       // Step 2: Generate questions from concepts
       setStatusMessage('Generating questions...');
+      setCurrentStep(1);
       const questions = await generateQuestions(
         apiClient, digest.keyConcepts, digest.title,
         questionsPerContent, multipleChoiceOnly,
       );
+      completedStepsRef.add(1);
+      Animated.spring(stepAnimValues[1], { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }).start();
 
       // Step 3: Save to database
       setStatusMessage('Saving to database...');
+      setCurrentStep(2);
       const repo = await initDatabase();
       await repo.saveContentWithQuestions({
         sourceType: 'text',
@@ -147,20 +167,82 @@ export default function AddContentScreen() {
   };
 
   // ─── Processing Screen ─── //
-  const ProcessingScreen = () => (
-    <View style={styles.processingContainer}>
-      <ActivityIndicator size="large" color={c.accent} />
-      <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
-        {t('add.processingTitle')}
-      </Text>
-      <Text style={[styles.processingStepText, { color: c.textSecondary }]}>
-        {statusMessage}
-      </Text>
-      <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
-        {t('add.processingDetail', { count: questionsPerContent })}
-      </Text>
-    </View>
-  );
+  const ProcessingScreen = () => {
+    const stepEmojis = ['📖', '🤖', '💾'];
+    return (
+      <View style={styles.processingContainer}>
+        <Text style={[styles.processingTitle, { color: c.textPrimary }]}>
+          {t('add.processingTitle')}
+        </Text>
+        <Text style={[styles.processingDetail, { color: c.textSecondary }]}>
+          {t('add.processingDetail', { count: questionsPerContent })}
+        </Text>
+
+        {/* Vertical timeline */}
+        <View style={styles.timelineContainer}>
+          {STEP_LABELS.map((label, i) => {
+            const isDone = completedStepsRef.has(i);
+            const isCurrent = i === currentStep;
+            const isLast = i === STEP_LABELS.length - 1;
+            return (
+              <View key={i} style={styles.timelineStep}>
+                {/* Dot + line */}
+                <View style={styles.timelineLeft}>
+                  <Animated.View style={[styles.timelineDot, {
+                    backgroundColor: isDone ? c.accent : isCurrent ? c.accent : c.border,
+                    transform: [{ scale: isDone || isCurrent ? stepAnimValues[i].interpolate({
+                      inputRange: [0, 1], outputRange: [0.5, 1],
+                    }) : 0.5 }],
+                  }]}>
+                    {isDone ? (
+                      <Text style={[styles.timelineCheckmark, { color: '#fff' }]}>✓</Text>
+                    ) : (
+                      <Text style={[styles.timelineStepEmoji, { opacity: isCurrent ? 1 : 0.4 }]}>{stepEmojis[i]}</Text>
+                    )}
+                  </Animated.View>
+                  {!isLast && (
+                    <View style={[styles.timelineLine, {
+                      backgroundColor: isDone ? c.accent : c.border,
+                    }]} />
+                  )}
+                </View>
+
+                {/* Step label */}
+                <Animated.View style={[styles.timelineRight, {
+                  opacity: isCurrent ? stepOpacity : isDone ? 0.6 : 0.4,
+                  transform: isCurrent ? [{
+                    scale: stepOpacity.interpolate({
+                      inputRange: [0, 1], outputRange: [0.8, 1],
+                    }),
+                  }] : [],
+                }]}>
+                  <Text style={[styles.timelineLabel, {
+                    color: c.textPrimary,
+                    fontWeight: isCurrent ? '700' : isDone ? '600' : '400',
+                  }]}>
+                    {label}
+                  </Text>
+                  {isCurrent && (
+                    <Text style={[styles.timelineStatus, { color: c.accent }]}>
+                      {statusMessage}
+                    </Text>
+                  )}
+                  {isDone && i === 0 && (
+                    <Text style={[styles.timelineDone, { color: c.accent }]}>{t('add.stepDigestDone')}</Text>
+                  )}
+                  {isDone && i === 1 && (
+                    <Text style={[styles.timelineDone, { color: c.accent }]}>{t('add.stepGenerateDone')}</Text>
+                  )}
+                </Animated.View>
+              </View>
+            );
+          })}
+        </View>
+
+        <ActivityIndicator size="small" color={c.accent} style={{ marginTop: 24 }} />
+      </View>
+    );
+  };
 
   // ─── Success Screen ─── //
   if (stage === 'success' && success) {
@@ -358,12 +440,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  processingTitle: { fontSize: 18, fontWeight: '700' },
-  processingStepText: {
-    fontSize: 15, textAlign: 'center', lineHeight: 22, fontStyle: 'italic',
+  processingTitle: { fontSize: 18, fontWeight: '700', marginBottom: 4 },
+  processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18, opacity: 0.7, marginBottom: 28 },
+
+  // ─── Processing Timeline ───
+  timelineContainer: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 16,
+    gap: 0,
   },
-  processingDetail: { fontSize: 13, textAlign: 'center', lineHeight: 18, opacity: 0.7 },
-  // Success
+  timelineStep: {
+    flexDirection: 'row',
+    minHeight: 64,
+  },
+  timelineLeft: {
+    width: 40,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timelineCheckmark: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  timelineStepEmoji: {
+    fontSize: 14,
+  },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  timelineRight: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  timelineLabel: {
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  timelineStatus: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  timelineDone: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  // ─── Success ───
   successContainer: {
     flex: 1,
   },

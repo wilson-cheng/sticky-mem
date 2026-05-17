@@ -10,6 +10,7 @@ import {
   Dimensions,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,6 +19,7 @@ import { initDatabase } from "../src/hooks/useDatabase";
 import { useColors } from "../src/theme/useColors";
 import { useTranslation } from "../src/i18n/useTranslation";
 import { useSettingsStore } from "../src/store/settings";
+import { seedDemoContent } from "../src/db/seedData";
 
 const { width } = Dimensions.get("window");
 
@@ -60,11 +62,23 @@ export default function HomeScreen() {
   const [hasContent, setHasContent] = useState(false);
   const [todayStarted, setTodayStarted] = useState(false);
   const [todayReviewed, setTodayReviewed] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Stat icon bounce animations
+  const statIcon1 = useRef(new Animated.Value(0)).current;
+  const statIcon2 = useRef(new Animated.Value(0)).current;
+  const statIcon3 = useRef(new Animated.Value(0)).current;
+
+  // Gear rotation animation
+  const gearRotation = useRef(new Animated.Value(0)).current;
 
   const questionsPerDay = useSettingsStore((s) => s.questionsPerDay);
   const lastReviewDate = useSettingsStore((s) => s.lastReviewDate);
   const setLastReviewDate = useSettingsStore((s) => s.setLastReviewDate);
+  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
+  const isHydrated = useSettingsStore((s) => s.isHydrated);
   const today = new Date().toISOString().slice(0, 10);
   const isFreshDay = lastReviewDate !== today;
   const dueToday = Math.min(
@@ -92,6 +106,57 @@ export default function HomeScreen() {
     anim.start();
     return () => anim.stop();
   }, [pulseAnim]);
+
+  // ── Onboarding redirect (only when store is hydrated) ── //
+  useEffect(() => {
+    if (isHydrated && !hasSeenOnboarding) {
+      router.replace("/onboarding");
+    }
+  }, [isHydrated, hasSeenOnboarding]);
+
+  // ── Stat icon bounce on mount ── //
+  useEffect(() => {
+    Animated.stagger(100, [
+      Animated.spring(statIcon1, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+      Animated.spring(statIcon2, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+      Animated.spring(statIcon3, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // ── Gear rotation wiggle on mount ── //
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(gearRotation, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(gearRotation, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // ── Seed demo content ── //
+  const handleSeedDemo = async () => {
+    if (seedingDemo) return;
+    setSeedingDemo(true);
+    try {
+      const repo = await initDatabase();
+      await seedDemoContent(repo);
+      setHasContent(true);
+      setTotalCards(9);
+      setTotalToReview(9);
+      loadStats();
+      Alert.alert(
+        "🚀 Demo Loaded!",
+        "You now have 9 questions ready. Try a review round to see StickyMem in action!",
+        [
+          { text: "Start Review", onPress: () => router.push("/review") },
+          { text: "Later", style: "cancel" },
+        ],
+      );
+    } catch (e) {
+      console.error("Failed to seed demo:", e);
+      Alert.alert("Error", "Failed to load demo content. Please try again.");
+    } finally {
+      setSeedingDemo(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -136,6 +201,7 @@ export default function HomeScreen() {
       // Track today's reviewed count for button mode logic
       const reviewedToday = await repo.getTodayCorrectCount();
       setTodayReviewed(reviewedToday);
+      setLoaded(true);
     } catch (e) {
       console.error("Failed to load home stats:", e);
     }
@@ -167,7 +233,74 @@ export default function HomeScreen() {
     }
   };
 
-  const renderContent = () => (
+  const renderContent = () => {
+    // ── Empty state for new users ── //
+    if (loaded && !hasContent) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Image
+            source={require("../assets/stickymem-cloud-icon.png")}
+            style={styles.emptyLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.emptyTitle, { color: c.textPrimary }]}>
+            {t("home.emptyTitle")}
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: c.textSecondary }]}>
+            {t("home.emptySubtitle")}
+          </Text>
+
+          {/* How It Works steps */}
+          <Text style={[styles.howItWorksTitle, { color: c.textPrimary }]}>
+            {t("home.howItWorks")}
+          </Text>
+          <View style={styles.emptySteps}>
+            <View style={[styles.emptyStep, { borderColor: c.border }]}>
+              <Text style={styles.emptyStepNum}>1</Text>
+              <View>
+                <Text style={[styles.emptyStepLabel, { color: c.textPrimary }]}>{t("home.emptyStep1")}</Text>
+                <Text style={[styles.emptyStepDesc, { color: c.textSecondary }]}>{t("home.emptyStep1Desc")}</Text>
+              </View>
+            </View>
+            <View style={[styles.emptyStep, { borderColor: c.border }]}>
+              <Text style={styles.emptyStepNum}>2</Text>
+              <View>
+                <Text style={[styles.emptyStepLabel, { color: c.textPrimary }]}>{t("home.emptyStep2")}</Text>
+                <Text style={[styles.emptyStepDesc, { color: c.textSecondary }]}>{t("home.emptyStep2Desc")}</Text>
+              </View>
+            </View>
+            <View style={[styles.emptyStep, { borderColor: c.border }]}>
+              <Text style={styles.emptyStepNum}>3</Text>
+              <View>
+                <Text style={[styles.emptyStepLabel, { color: c.textPrimary }]}>{t("home.emptyStep3")}</Text>
+                <Text style={[styles.emptyStepDesc, { color: c.textSecondary }]}>{t("home.emptyStep3Desc")}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Actions */}
+          <TouchableOpacity
+            style={[styles.getStartedBtn, { backgroundColor: c.accent }]}
+            onPress={() => router.push("/add")}
+          >
+            <Text style={styles.getStartedBtnText}>{t("home.getStarted")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.demoBtn, { borderColor: c.accent }]}
+            onPress={handleSeedDemo}
+            disabled={seedingDemo}
+          >
+            {seedingDemo ? (
+              <ActivityIndicator size="small" color={c.accent} />
+            ) : (
+              <Text style={[styles.demoBtnText, { color: c.accent }]}>{t("home.tryDemo")}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
     <>
       {/* ── Hero Card ── */}
       <View style={styles.heroSection}>
@@ -237,42 +370,48 @@ export default function HomeScreen() {
 
       {/* ── Quick Stats ── */}
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={c.statGradient1 as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statCardGradient}
-          >
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>{streakDays}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
-          </LinearGradient>
-        </View>
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={c.statGradient2 as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statCardGradient}
-          >
-            <Text style={styles.statIcon}>🧠</Text>
-            <Text style={styles.statValue}>{totalCards}</Text>
-            <Text style={styles.statLabel}>Total Cards</Text>
-          </LinearGradient>
-        </View>
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={c.statGradient3 as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statCardGradient}
-          >
-            <Text style={styles.statIcon}>📅</Text>
-            <Text style={styles.statValue}>{todayReviewed}</Text>
-            <Text style={styles.statLabel}>Today Reviewed</Text>
-          </LinearGradient>
-        </View>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={c.statGradient1 as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Animated.View style={{ transform: [{ scale: statIcon1 }] }}>
+                  <Text style={styles.statIcon}>🔥</Text>
+                </Animated.View>
+                <Text style={styles.statValue}>{streakDays}</Text>
+                <Text style={styles.statLabel}>Day Streak</Text>
+              </LinearGradient>
+            </View>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={c.statGradient2 as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Animated.View style={{ transform: [{ scale: statIcon2 }] }}>
+                  <Text style={styles.statIcon}>🧠</Text>
+                </Animated.View>
+                <Text style={styles.statValue}>{totalCards}</Text>
+                <Text style={styles.statLabel}>Total Cards</Text>
+              </LinearGradient>
+            </View>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={c.statGradient3 as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <Animated.View style={{ transform: [{ scale: statIcon3 }] }}>
+                  <Text style={styles.statIcon}>📅</Text>
+                </Animated.View>
+                <Text style={styles.statValue}>{todayReviewed}</Text>
+                <Text style={styles.statLabel}>Today Reviewed</Text>
+              </LinearGradient>
+            </View>
       </View>
 
       {/* ── Feature Grid ── */}
@@ -330,20 +469,21 @@ export default function HomeScreen() {
             ➕ Add Content
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.actionBtn,
-            { backgroundColor: c.cardBg, borderColor: c.border },
-          ]}
-          onPress={() => router.push("/settings")}
-        >
-          <Text style={[styles.actionBtnText, { color: c.textPrimary }]}>
-            ⚙️ Settings
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              { backgroundColor: c.cardBg, borderColor: c.border },
+            ]}
+            onPress={() => router.push("/settings")}
+          >
+            <Animated.Text style={[styles.actionBtnText, { color: c.textPrimary, transform: [{ rotate: gearRotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '15deg'] }) }] }]}>
+              ⚙️ Settings
+            </Animated.Text>
+          </TouchableOpacity>
       </View>
     </>
   );
+};
 
   if (Platform.OS === "web") {
     return (
@@ -568,4 +708,94 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   actionBtnText: { fontSize: 14, fontWeight: "600" },
+
+  // ── Empty State ──
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: 40,
+    paddingHorizontal: 32,
+  },
+  emptyLogo: {
+    width: 80,
+    height: 80,
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 32,
+    marginBottom: 12,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 28,
+    paddingHorizontal: 8,
+  },
+  howItWorksTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 16,
+    alignSelf: "flex-start",
+  },
+  emptySteps: {
+    alignSelf: "stretch",
+    gap: 12,
+    marginBottom: 32,
+  },
+  emptyStep: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  emptyStepNum: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#7C4DFF",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#7C4DFF20",
+    textAlign: "center",
+    lineHeight: 32,
+    overflow: "hidden",
+  },
+  emptyStepLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  emptyStepDesc: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  getStartedBtn: {
+    alignSelf: "stretch",
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  getStartedBtnText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  demoBtn: {
+    alignSelf: "stretch",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1.5,
+    marginBottom: 20,
+  },
+  demoBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
 });
