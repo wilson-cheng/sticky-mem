@@ -39,6 +39,7 @@ export default function ReviewScreen() {
   const [stats, setStats] = useState({ correct: 0, total: 0 });
   const [todayBaseline, setTodayBaseline] = useState(0);
   const [sessionDone, setSessionDone] = useState(false);
+  const [phase, setPhase] = useState<'study' | 'quiz'>('study');
   const repoRef = useRef<Awaited<ReturnType<typeof initDatabase>> | null>(null);
   const [sessionStartTime] = useState(Date.now());
   const [sourceViewerQuestion, setSourceViewerQuestion] = useState<typeof currentQuestion | null>(null);
@@ -436,18 +437,96 @@ export default function ReviewScreen() {
   const currentQuestion = reviewQueue[currentIndex];
   if (!currentQuestion) return null;
 
+  // ─── Study Phase: Question + Answer shown together ─── //
+  const StudyCard = () => {
+    const studyAnim = useRef(new Animated.Value(400)).current;
+    useEffect(() => {
+      studyAnim.setValue(400);
+      Animated.spring(studyAnim, { toValue: 0, friction: 9, tension: 50, useNativeDriver: true }).start();
+    }, [currentQuestion.id]);
+
+    const handleStudyNext = () => {
+      Animated.timing(studyAnim, { toValue: -400, duration: 200, useNativeDriver: true }).start(() => {
+        const next = currentIndex + 1;
+        if (next >= reviewQueue.length) {
+          // Study done → start quiz
+          setPhase('quiz');
+          setCurrentIndex(0);
+        } else {
+          setCurrentIndex(next);
+        }
+      });
+    };
+
+    const isLast = currentIndex === reviewQueue.length - 1;
+
+    return (
+      <Animated.View style={{ transform: [{ translateX: studyAnim }] }}>
+        <View style={[styles.studyContainer, { backgroundColor: c.cardBg }]}>
+          {/* Phase badge */}
+          <View style={[styles.phaseBadge, { backgroundColor: c.accent + '20' }]}>
+            <Text style={[styles.phaseBadgeText, { color: c.accent }]}>📖 Study {currentIndex + 1}/{reviewQueue.length}</Text>
+          </View>
+
+          {/* Question */}
+          <Text style={[styles.studyQuestion, { color: c.textPrimary }]}>{currentQuestion.question}</Text>
+
+          {/* Answer */}
+          <View style={[styles.studyAnswerBox, { backgroundColor: c.statBoxBg, borderColor: c.cardBorderCorrect }]}>
+            <Text style={[styles.studyAnswerLabel, { color: c.cardBorderCorrect }]}>Answer</Text>
+            <Text style={[styles.studyAnswerText, { color: c.textPrimary }]}>{currentQuestion.correctAnswer}</Text>
+          </View>
+
+          {/* Explanation */}
+          {currentQuestion.explanation && (
+            <View style={[styles.studyExplanation, { backgroundColor: c.statBoxBg + '80' }]}>
+              <Text style={[styles.studyExplanationLabel, { color: c.accent }]}>💡 Explanation:</Text>
+              <Text style={[styles.studyExplanationText, { color: c.textSecondary }]}>{currentQuestion.explanation}</Text>
+            </View>
+          )}
+
+          {/* Next button */}
+          <TouchableOpacity style={[styles.studyNextBtn, { backgroundColor: c.accent }]} onPress={handleStudyNext}>
+            <Text style={styles.studyNextBtnText}>
+              {isLast ? t('review.startQuiz') : t('question.continue')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // ─── Quiz Phase: Use QuestionCard with 2 options ─── //
+  const quizQuestion = phase === 'quiz' && currentQuestion.type === 'multiple_choice' && currentQuestion.options
+    ? {
+        ...currentQuestion,
+        options: (() => {
+          const wrongs = currentQuestion.options!.filter(o => o !== currentQuestion.correctAnswer);
+          const randomWrong = wrongs[Math.floor(Math.random() * wrongs.length)] || wrongs[0];
+          // Shuffle correct + wrong
+          return Math.random() > 0.5
+            ? [currentQuestion.correctAnswer, randomWrong]
+            : [randomWrong, currentQuestion.correctAnswer];
+        })(),
+      }
+    : currentQuestion;
+
+  const showStopBtn = !isBonus && phase === 'quiz';
+
   return (
     <>
       <View style={[styles.container, { backgroundColor: c.bg }]}>
-        {/* Header with back button */}
+        {/* Header with back button + phase indicator */}
         <View style={[styles.header, { paddingTop: insets.top, backgroundColor: c.bg }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Text style={[styles.backButtonText, { color: c.accent }]}>← {t('review.back')}</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.textPrimary }]}>
-            {isTargetMet ? t('review.bonusRound') : reviewMoreLabel}
+            {phase === 'study' ? t('review.studyMode') : (isTargetMet ? t('review.bonusRound') : reviewMoreLabel)}
           </Text>
-          <Text style={[styles.headerProgress, { color: c.textSecondary }]}>{todayBaseline + stats.total}/{reviewQueue.length}</Text>
+          <Text style={[styles.headerProgress, { color: c.textSecondary }]}>
+            {phase === 'quiz' ? todayBaseline + stats.total : 0}/{reviewQueue.length}
+          </Text>
         </View>
 
         {/* Progress bar */}
@@ -456,7 +535,14 @@ export default function ReviewScreen() {
             <View
               style={[
                 styles.progressFill,
-                { width: `${((todayBaseline + stats.total) / reviewQueue.length) * 100}%`, backgroundColor: c.accent },
+                {
+                  width: `${
+                    phase === 'study'
+                      ? ((currentIndex + 1) / reviewQueue.length) * 100
+                      : ((todayBaseline + stats.total) / reviewQueue.length) * 100
+                  }%`,
+                  backgroundColor: phase === 'study' ? c.accent + '60' : c.accent,
+                },
               ]}
             />
           </View>
@@ -476,18 +562,22 @@ export default function ReviewScreen() {
         </TouchableOpacity>
       )}
 
-      <QuestionCard
-        key={currentQuestion.id}
-        question={currentQuestion}
-        onGrade={handleRecordGrade}
-        onIdk={handleIdk}
-        onNext={handleNext}
-        onRemove={handleRemove}
-        showRemove={true}
-        correctAutoAdvanceMs={5000}
-      />
+      {phase === 'study' ? (
+        <StudyCard />
+      ) : (
+        <QuestionCard
+          key={`quiz-${currentQuestion.id}`}
+          question={quizQuestion}
+          onGrade={handleRecordGrade}
+          onIdk={handleIdk}
+          onNext={handleNext}
+          onRemove={handleRemove}
+          showRemove={true}
+          correctAutoAdvanceMs={5000}
+        />
+      )}
 
-      {!isBonus && (
+      {showStopBtn && (
         <TouchableOpacity style={styles.stopBtn} onPress={handleStopForNow}>
           <Text style={styles.stopBtnText}>{t('review.stopForNow')}</Text>
         </TouchableOpacity>
@@ -649,6 +739,42 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   stopBtnText: { fontSize: 14, fontWeight: '600', opacity: 0.6 },
+  // ─── Study Card ───
+  studyContainer: {
+    borderRadius: 20, padding: 24,
+    marginHorizontal: 16, marginVertical: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
+  },
+  phaseBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 20, marginBottom: 16,
+  },
+  phaseBadgeText: { fontSize: 12, fontWeight: '700' },
+  studyQuestion: {
+    fontSize: 18, fontWeight: '700',
+    lineHeight: 26, marginBottom: 20,
+  },
+  studyAnswerBox: {
+    borderRadius: 12, padding: 16,
+    borderWidth: 2, marginBottom: 16,
+  },
+  studyAnswerLabel: {
+    fontSize: 12, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  studyAnswerText: { fontSize: 16, fontWeight: '500', lineHeight: 22 },
+  studyExplanation: {
+    borderRadius: 10, padding: 14, marginBottom: 20,
+  },
+  studyExplanationLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  studyExplanationText: { fontSize: 14, lineHeight: 20 },
+  studyNextBtn: {
+    borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+  },
+  studyNextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   // Emoji burst
   burstEmoji: {
     position: 'absolute',
